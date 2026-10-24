@@ -2705,18 +2705,22 @@
     {
       "id": "standard",
       "title": "games without a list of their own",
-      "version": 1,
+      "version": 50,
       "config": [
         "# BCD's recommended settings for a game without a list of its own.",
         "# Reset to Recommended, at the bottom of the game's settings, brings them back.",
         "env.MADEIRA_EC_HOOK_TRACE = 0"
       ],
+      "smallRAMConfig": ["env.MADEIRA_X64_IMAGE_NOCOPY = 1"],
       "notes": [
         "Every other game (owner's decision, 2026-10-12): most games the owner tried",
         "outside these lists closed at start until the [ec-hook] reporter was off. It",
         "reads code that copy protection rewrites (GTA V Enhanced's other copy on",
         "build 451, Ghost of Tsushima on build 515), and it only logs, so turning it",
-        "off costs a game nothing. No switches."
+        "off costs a game nothing. No switches.",
+        "Version 50 (SOSOalqawe12 fork, 2026-10-24): under 12 GB of RAM every such game also runs its pure-x64 images without a",
+        "JIT-pool copy (env.MADEIRA_X64_IMAGE_NOCOPY = 1), the line 27 of the tuned lists carry and auto-tune adds after a pool",
+        "failure; on an 8 GB phone the pool and memory run out first, so it is there from the first start."
       ]
     }
   ]

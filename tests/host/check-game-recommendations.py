@@ -210,7 +210,8 @@ assert rdr2_other['version'] == 1 and rdr2_other['switches'] == presets['rdr2-st
 assert 'env.MADEIRA_EC_HOOK_TRACE = 0' in presets['gta5e-other']['lines']
 # Every other game (owner's decision, 2026-10-12): the ec-hook reporter off, nothing else, no switches.
 standard = presets['standard']
-assert standard['lines'][2:] == ['env.MADEIRA_EC_HOOK_TRACE = 0'] and standard['switches'] == '' and standard['version'] == 1, standard
+assert standard['lines'][2:] == ['env.MADEIRA_EC_HOOK_TRACE = 0'] and standard['switches'] == '' and standard['version'] == 50, standard
+assert standard['small'] == ['env.MADEIRA_X64_IMAGE_NOCOPY = 1'], standard['small']   # SOSOalqawe12 fork, v50
 assert 'if size != GameRecommendation.screen720 { entry.resolution = size }\n            else if let lines720 = ResolutionChoices.screen720Value { entry.resolution = lines720 }' in apply_src
 gta = presets['gta5e-steam']
 assert 'env.MADEIRA_CHILD_ARGS = PlayGTAV.exe -nobattleye' in gta['lines']
@@ -234,7 +235,7 @@ assert legacy['version'] == 50 and legacy['title'] == 'GTA V Legacy (Steam)', le
 assert not any(line.startswith(('vram-mb', 'swap-mb')) for line in legacy['lines']), legacy['lines']
 assert legacy['small'] == ['swap-mb = 3072', 'swap-mode = 2', 'swap-min-mb = 1'], legacy['small']
 assert 'static var smallRAMDevice: Bool { deviceRAMBytes < 10 << 30 }' in lists_src
-assert [ident for ident, p in presets.items() if p['small']] == ['gta5e-steam', 'gta5l-steam']
+assert [ident for ident, p in presets.items() if p['small']] == ['gta5e-steam', 'gta5l-steam', 'standard']
 # SOSOalqawe12 fork, v50: GTA V Enhanced on an 8 GB device (iPhone 15 Pro Max) gets HFW's and RDR2's swap lines.
 assert presets['gta5e-steam']['small'] == ['vram-mb = 3072', 'swap-mb = 8192', 'swap-mode = 2', 'swap-min-mb = 1',
                                            'swap-images = 1', 'avail-phys = 1'], presets['gta5e-steam']['small']
@@ -912,7 +913,7 @@ check(R.gta5LegacySteam.fileText.hasSuffix("env.MADEIRA_METAL_HUD_MAIN = 1\nswap
 let enhanced = R.all.first { $0.id == "gta5e-steam" }!
 check(enhanced.fileText.hasSuffix("vram-mb = 3072\nswap-mb = 8192\nswap-mode = 2\nswap-min-mb = 1\nswap-images = 1\navail-phys = 1\n"),
       "an 8 GB phone: the swap lines after GTA V Enhanced's list")
-check(zip(R.all, onTwelve).allSatisfy { ["gta5l-steam", "gta5e-steam"].contains($0.0.id) || $0.0.fileText == $0.1 },
+check(zip(R.all, onTwelve).allSatisfy { ["gta5l-steam", "gta5e-steam", "standard"].contains($0.0.id) || $0.0.fileText == $0.1 },
       "every other list is the same on an 8 GB phone")
 R.deviceRAMBytes = 11_695 << 20
 check(id(other + #"\PlayGTAV.exe"#) == "none", "PlayGTAV.exe without GTA5_Enhanced.exe beside it")
@@ -1125,7 +1126,7 @@ check(R.reset(&foo)?.id == "standard" && file(fooExe) == R.standard!.fileText, "
 let barExe = #"C:\Games\Bar\bar.exe"#
 var bar = LibraryEntry(title: "Bar", windowsPath: barExe)
 check(R.prepare(&bar) && file(barExe) == R.standard!.fileText && bar.resolution == "1408x648" && bar.fpsMode == 1
-      && !LibraryPrefs.avx(barExe) && mark(barExe)?.hasPrefix("standard#1#") == true,
+      && !LibraryPrefs.avx(barExe) && mark(barExe)?.hasPrefix("standard#50#") == true,
       "first sight of a game without a list: the standard list, no switches")
 // An untouched standard list gives way to the game's own list later, as on first sight: switches too.
 let laterExe = #"C:\Later\GoW.exe"#
