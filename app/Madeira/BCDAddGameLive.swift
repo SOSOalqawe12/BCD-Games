@@ -28,15 +28,21 @@ import Foundation
     func list(_ folder: String) throws -> [BCDDriveItem] {
         let base = url(folder)
         guard folder.isEmpty || inside(base) else { throw BCDGameError("This folder is outside drive_c.") }
+        // SOSOalqawe12 fork: a folder on an external drive is read at the drive's own path (the
+        // security-scoped URL Files gave), not through its link in drive_c/External; the items
+        // keep their drive_c paths.
+        let real = ExternalDrives.realURL(forDrivePath: folder) ?? base
         let names: [URL]
         do {
-            names = try FileManager.default.contentsOfDirectory(at: base, includingPropertiesForKeys: [.isDirectoryKey],
+            names = try FileManager.default.contentsOfDirectory(at: real, includingPropertiesForKeys: [.isDirectoryKey],
                                                                 options: .skipsHiddenFiles)
         } catch {
-            throw BCDGameError("BCD couldn't open this folder.")
+            LogStore.shared.log("[external] list \(real == base ? "drive_c" : "drive") failed: \(error.localizedDescription)")
+            throw BCDGameError(real == base ? "BCD couldn't open this folder."
+                                            : "BCD couldn't open this folder on the drive: \(error.localizedDescription)")
         }
         var items: [BCDDriveItem] = []
-        for file in names where inside(file) {
+        for file in names where real != base || inside(file) {
             let isFolder = (try? file.resolvingSymlinksInPath().resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
             guard isFolder || LibraryModel.programExtensions.contains(file.pathExtension.lowercased()) else { continue }
             let path = folder.isEmpty ? file.lastPathComponent : folder + "/" + file.lastPathComponent
@@ -48,14 +54,14 @@ import Foundation
     }
 
     func inspect(_ path: String) throws -> BCDProgramInfo {
-        let entry = try LibraryModel.inspect(url(path))
+        let entry = try LibraryModel.inspect(ExternalDrives.realURL(forDrivePath: path) ?? url(path))
         return BCDProgramInfo(title: entry.title, windowsPath: entry.windowsPath, bits: entry.bits, api: entry.graphicsAPI)
     }
 
     /// The program, read again and saved with its name; a program the library already holds is
     /// not added twice: its game is the answer.
     func add(_ path: String, title: String) throws -> String {
-        var entry = try LibraryModel.inspect(url(path))
+        var entry = try LibraryModel.inspect(ExternalDrives.realURL(forDrivePath: path) ?? url(path))
         let library = LibraryModel.shared
         if let known = library.entries.first(where: {
             $0.desktop != true && $0.steamAppID == nil && $0.relativePath.lowercased() == entry.relativePath.lowercased()

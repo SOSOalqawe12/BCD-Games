@@ -1968,6 +1968,14 @@ enum ExternalDrives {
         return "External/" + label
     }
 
+    /// The drive's own URL for a path inside drive_c ("External/<name>/..."), or nil when the path is
+    /// not on an opened drive. Read through this rather than the link: it is the path Files gave access to.
+    static func realURL(forDrivePath path: String) -> URL? {
+        let parts = path.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
+        guard parts.count >= 2, parts[0] == "External", let drive = opened.first(where: { $0.name == parts[1] }) else { return nil }
+        return parts.dropFirst(2).reduce(drive.target) { $0.appendingPathComponent($1) }
+    }
+
     /// The path inside drive_c of a file on an opened drive, or of a file in drive_c itself; nil
     /// for anything else. A link into a drive resolves to the drive, so this maps it back.
     static func driveRelative(_ url: URL) -> String? {

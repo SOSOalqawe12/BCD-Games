@@ -168,7 +168,7 @@ for what, needle in [
     ("drive_c's folders and programs (.exe, .bat, .cmd)", "LibraryModel.programExtensions.contains(file.pathExtension.lowercased())"),
     ("... only what lies inside drive_c, links followed, or on an external drive added to it", 'private func inside(_ url: URL) -> Bool { ExternalDrives.driveRelative(url) != nil }'),
     ("... folders first, then by name", "$0.folder != $1.folder ? $0.folder : $0.name.localizedStandardCompare($1.name) == .orderedAscending"),
-    ("the program is read as the library reads one", "let entry = try LibraryModel.inspect(url(path))"),
+    ("the program is read as the library reads one", "let entry = try LibraryModel.inspect(ExternalDrives.realURL(forDrivePath: path) ?? url(path))"),
     ("it is saved to the library with its name", "if !name.isEmpty { entry.title = name }\n        library.save(entry)"),
     ("a program the library holds is not added twice", "$0.relativePath.lowercased() == entry.relativePath.lowercased()"),
     ("the answer is the game's id in the store", "return BCDLiveID.local(entry.id)"),
