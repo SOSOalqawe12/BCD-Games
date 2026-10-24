@@ -1071,6 +1071,14 @@ OVERLAY = {
                         "fullscreen. Needs a desktop (Dock) session. Without it the log says [tiny-win] once and nothing "
                         "changes. [win-create] in the log shows what size each program asked its window for. Set it in the "
                         "game's own file; read at session start."},
+    # SOSOalqawe12 fork: kernelbase-aslr.dll (tools/patch-wine-mitigation-policy.py, linked by WineProcessBridge.m).
+    "env.MADEIRA_ASLR_FIX": {"category": "Wine libraries", "title": "Fix \"disable Mandatory ASLR\" messages",
+                "kind": "bool", "default": "0",
+                "sources": ["app/Madeira/WineProcessBridge.m", "tools/patch-wine-mitigation-policy.py"],
+                "note": "1: a 64-bit game runs kernelbase-aslr.dll as kernelbase.dll, Wine's kernelbase whose "
+                        "GetProcessMitigationPolicy reports every exploit mitigation as not forced. Wine's stub left "
+                        "the answer unwritten, so a game that checks for Mandatory ASLR read garbage and asked to "
+                        "disable it. 32-bit games always have the fix. Set it in the game's own file; read at session start."},
     "env.MADEIRA_WER": {"category": "Wine libraries", "title": "Give the game Wine's wer.dll",
                 "kind": "bool", "default": "0",
                 "sources": ["app/Madeira/WineProcessBridge.m", "tools/build-wine-extra-dlls.sh"],

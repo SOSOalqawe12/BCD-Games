@@ -1645,6 +1645,14 @@ jobs:
           python3 tests/host/check-x64-machine.py
           python3 tools/patch-wine-x64-machine.py wine
 
+      # SOSOalqawe12 fork: GetProcessMitigationPolicy writes its answer (every policy "not forced"),
+      # so a 32-bit game's "Please disable Mandatory ASLR" check reads a real answer. Same i386-only
+      # window as the x64-machine patch: process.c is put back after the farm (step below).
+      - name: Patch wine for the mitigation policy answer (i386 farm only)
+        run: |
+          python3 tests/host/check-mitigation-policy.py
+          python3 tools/patch-wine-mitigation-policy.py wine
+
       # WoW64's 32-bit Windows farm (app/Madeira/i386-windows), which upstream
       # builds from the pinned wine and DXMT (build/wine-i386) and does not
       # commit. Cached per wine/DXMT revision and per the tools/patch-wine-*.py

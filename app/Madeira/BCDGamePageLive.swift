@@ -359,6 +359,9 @@ import UniformTypeIdentifiers
                         note: "Fastsync handles this game's events inside its own process instead of in the Wine server.", locked: lock),
             Self.toggle("semaphores", "Fast semaphore waits (experimental)", entry.semaphoreFastPath ?? false,
                         note: "Fastsync also handles semaphores inside the game's process.", locked: lock),
+            // SOSOalqawe12 fork: kernelbase-aslr.dll (tools/patch-wine-mitigation-policy.py).
+            Self.toggle("aslrfix", "Fix \"disable Mandatory ASLR\"", GameProfile(windowsPath: path).get("env.MADEIRA_ASLR_FIX") == "1",
+                        note: "For a 64-bit game that asks you to disable Mandatory ASLR and quits. Windows then reports every exploit protection as off, as a normal PC does. 32-bit games always have this fix."),
         ])
     }
 
@@ -831,6 +834,7 @@ import UniformTypeIdentifiers
         case "cpus": change(game) { $0.cpuCount = Int(value).flatMap { $0 == 0 ? nil : $0 } }
         case "fastsync": change(game) { $0.fastSync = on }
         case "semaphores": change(game) { $0.semaphoreFastPath = on }
+        case "aslrfix": setLine(game, "env.MADEIRA_ASLR_FIX", on ? "1" : "")
         case "touch": change(game) { $0.touchControls = on }
         case "overlay": change(game) { $0.performance = on }
         case "livelogs": change(game) { $0.liveLogs = on }

@@ -104,6 +104,15 @@ FBT=""
 if [ "${MADEIRA_FIBER_TRACE_BUILD:-1}" != 0 ] && [ -f "$R/wine/dlls/kernelbase/thread.c" ] && [ -f "$SHIP/kernelbase.dll" ]; then
     FBT=kernelbase
 fi
+# SOSOalqawe12 fork: kernelbase-aslr.dll is Wine's kernelbase with
+# tools/patch-wine-mitigation-policy.py (GetProcessMitigationPolicy writes its
+# buffer, so "Please disable Mandatory ASLR" checks read "not forced") and ships NEXT
+# TO the shipped kernelbase.dll; only a game with env.MADEIRA_ASLR_FIX = 1 runs it.
+# MADEIRA_ASLR_FIX_BUILD=0 skips it.
+ASL=""
+if [ "${MADEIRA_ASLR_FIX_BUILD:-1}" != 0 ] && [ -f "$R/wine/dlls/kernelbase/process.c" ] && [ -f "$SHIP/kernelbase.dll" ]; then
+    ASL=kernelbase
+fi
 # madeira-bcd: a new file too. wer-optin.dll is Wine's own, unpatched wer.dll (Hello Neighbor's
 # UE4 executable imports it and exited at once with 0xc0000135, a tester's log, build 573). It is
 # NOT shipped as wer.dll: Wine's wer.dll has 68 unimplemented exports, so a program that loads
@@ -302,6 +311,29 @@ if [ -n "$FBT" ]; then
     fi
     # shellcheck disable=SC2086 # the list is five fixed paths
     git -C "$R/wine" checkout -- $kbsrc
+    rm -f "$kb" "$B"/dlls/kernelbase/arm64ec-windows/*.o
+fi
+# SOSOalqawe12 fork: kernelbase-aslr.dll (see ASL above), from the restored tree, built,
+# stripped and verified like kernelbase-fibertrace.dll; the tree is restored afterwards.
+if [ -n "$ASL" ]; then
+    kb="$B/dlls/kernelbase/arm64ec-windows/kernelbase.dll"
+    if python3 "$R/tools/patch-wine-mitigation-policy.py" "$R/wine"; then
+        rm -f "$kb" "$B"/dlls/kernelbase/arm64ec-windows/*.o
+        make -C "$B" -j"$JOBS" dlls/kernelbase/arm64ec-windows/kernelbase.dll > "$B.kernelbase-aslr.log" 2>&1
+        if [ -f "$kb" ] && cp "$kb" "$SHIP/kernelbase-aslr.dll.tmp" &&
+           "$MINGW/arm64ec-w64-mingw32-strip" --strip-debug "$SHIP/kernelbase-aslr.dll.tmp" &&
+           python3 "$R/tools/patch-wine-mitigation-policy.py" --verify "$SHIP/kernelbase-aslr.dll.tmp" "$SHIP/kernelbase.dll"; then
+            mv "$SHIP/kernelbase-aslr.dll.tmp" "$SHIP/kernelbase-aslr.dll"
+            echo "::notice::kernelbase-aslr.dll (GetProcessMitigationPolicy answers; env.MADEIRA_ASLR_FIX = 1): built next to the shipped kernelbase.dll"
+        else
+            rm -f "$SHIP/kernelbase-aslr.dll.tmp"
+            echo "::warning::kernelbase-aslr.dll did not build or failed its check; not shipped (env.MADEIRA_ASLR_FIX = 1 does nothing)"
+            grep -m 10 "error" "$B.kernelbase-aslr.log"
+        fi
+    else
+        echo "::warning::mitigation-policy patch did not apply; kernelbase-aslr.dll not shipped"
+    fi
+    git -C "$R/wine" checkout -- dlls/kernelbase/process.c
     rm -f "$kb" "$B"/dlls/kernelbase/arm64ec-windows/*.o
 fi
 # madeira-bcd: setupapi-optin.dll (see SDL above), from the restored tree. Stripped the way

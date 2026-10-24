@@ -2113,6 +2113,35 @@ static void *wine_process_thread(void *arg) {
                 }
             }
 
+            /* SOSOalqawe12 fork: env.MADEIRA_ASLR_FIX = 1 (the game's own file) runs
+             * kernelbase-aslr.dll as kernelbase.dll: Wine's kernelbase with
+             * tools/patch-wine-mitigation-policy.py, whose GetProcessMitigationPolicy writes
+             * "not forced" for every policy (the stub left the buffer unwritten, so a game
+             * that checks for Mandatory ASLR read its own stack). Linked like
+             * kernelbase-fibertrace.dll, which wins when both are set (a diagnostic run). */
+            {
+                const char *aslrFix = getenv("MADEIRA_ASLR_FIX");
+                const char *fiberOn = getenv("MADEIRA_FIBER_TRACE");
+                if (aslrFix && aslrFix[0] == '1' && !(fiberOn && fiberOn[0] == '1')) {
+                    NSString *aslrDll = [[bundlePath stringByAppendingPathComponent:@"arm64ec-windows"]
+                                         stringByAppendingPathComponent:@"kernelbase-aslr.dll"];
+                    if ([fm fileExistsAtPath:aslrDll]) {
+                        NSMutableArray *dirs = [NSMutableArray arrayWithObject:
+                            [prefix stringByAppendingPathComponent:@"drive_c/windows/sysx64"]];
+                        if (use_arm64ec) [dirs addObject:sys32Dir];
+                        for (NSString *dir in dirs) {
+                            NSString *dst = [dir stringByAppendingPathComponent:@"kernelbase.dll"];
+                            [fm removeItemAtPath:dst error:nil];
+                            [fm createSymbolicLinkAtPath:dst withDestinationPath:aslrDll error:nil];
+                        }
+                        dprintf(STDERR_FILENO, "[WineProc] MADEIRA_ASLR_FIX=1: kernelbase.dll -> kernelbase-aslr.dll (mitigation policies read as not forced; %s)\n",
+                                use_arm64ec ? "system32 + sysx64" : "sysx64 only");
+                    } else {
+                        dprintf(STDERR_FILENO, "[WineProc] MADEIRA_ASLR_FIX=1 but this build has no kernelbase-aslr.dll -- the shipped kernelbase.dll stays\n");
+                    }
+                }
+            }
+
             /* madeira-bcd: env.MADEIRA_WER = 1 (the game's own file) runs wer-optin.dll as
              * wer.dll: Wine's own wer.dll, which tools/build-wine-extra-dlls.sh ships under
              * that name and never as wer.dll. Hello Neighbor's UE4 executable imports
@@ -2698,6 +2727,7 @@ static void wine_session_end(void)
     unsetenv("MADEIRA_UCRT_X64_MATH"); unsetenv("MADEIRA_SRV_FGETPATH");
     unsetenv("MADEIRA_NTDLL_SYNC");   /* madeira-bcd: a game's switch is its own */
     unsetenv("MADEIRA_FIBER_TRACE");  /* madeira-bcd: likewise */
+    unsetenv("MADEIRA_ASLR_FIX");     /* SOSOalqawe12 fork: likewise */
     unsetenv("MADEIRA_WER");          /* madeira-bcd: likewise */
     unsetenv("MADEIRA_WINTYPES");     /* madeira-bcd: likewise */
     unsetenv("MADEIRA_X64_MACHINE");  /* madeira-bcd: likewise (BeamNG.drive's launcher) */

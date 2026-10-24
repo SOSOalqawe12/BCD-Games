@@ -355,7 +355,7 @@ check('the build patches, builds kernelbase, strips like build-modules.sh, verif
       'arm64ec-w64-mingw32-strip" --strip-debug' in fbt and
       '--verify "$SHIP/kernelbase-fibertrace.dll.tmp" "$SHIP/kernelbase.dll"' in fbt and
       'mv "$SHIP/kernelbase-fibertrace.dll.tmp" "$SHIP/kernelbase-fibertrace.dll"' in fbt and
-      build.count('"$SHIP/kernelbase.dll"') == 2)   # the FBT condition and --verify: never written
+      build.count('"$SHIP/kernelbase.dll"') == 4)   # the FBT and ASL conditions and their --verify: never written
 check('the build restores the five files and drops the patched objects',
       all(f in fbt for f in ft.FILES) and 'git -C "$R/wine" checkout -- $kbsrc' in fbt and
       fbt.count('rm -f "$kb" "$B"/dlls/kernelbase/arm64ec-windows/*.o') == 2)
