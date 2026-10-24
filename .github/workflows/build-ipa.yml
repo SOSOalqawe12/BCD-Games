@@ -84,6 +84,11 @@ jobs:
       - name: Check online recommended settings
         run: python3 tests/host/check-remote-recommendations.py --require-swift
 
+      # SOSOalqawe12 fork: the online copy is this repository's; a list changed without being signed is refused by
+      # installed apps (they keep their list), so say so without failing the build.
+      - name: Check the online list's signature (BCD-Games)
+        run: python3 tools/sign-recommendations.py --check || echo "::warning::recommendations.json.sig does not match the list; run the Sign recommended settings workflow"
+
       # madeira-bcd: auto-tune (docs/AUTO-TUNE.md): off changes nothing; its hooks, rules,
       # fixtures, engine and app side.
       - name: Check auto-tune

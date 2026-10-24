@@ -10,13 +10,13 @@
 //  the newest one beside its Ed25519 signature, so a game fixed by one new line gets it without
 //  a new build:
 //
-//    https://raw.githubusercontent.com/thebcd69/bcd-games/main/recommended/recommendations.json
-//    https://raw.githubusercontent.com/thebcd69/bcd-games/main/recommended/recommendations.json.sig
+//    https://raw.githubusercontent.com/SOSOalqawe12/BCD-Games/main/recommended/recommendations.json
+//    https://raw.githubusercontent.com/SOSOalqawe12/BCD-Games/main/recommended/recommendations.json.sig
 //
 //  A download is used only when all of this holds; otherwise the list in use stays, and one
 //  "[recs]" log line says why:
-//    - its signature is valid for its exact bytes under the public key below (the private key
-//      never leaves the owner's Mac; tools/publish-recommendations.py signs);
+//    - its signature is valid for its exact bytes under the public key below (SOSOalqawe12/BCD-Games:
+//      tools/sign-recommendations.py signs with tools/recommendations-signing.seed);
 //    - it is format 1, laid out as GameRecommendationsList.swift says, with no unknown field;
 //    - every line this build applies sets a key RecommendationsPolicy allows;
 //    - it keeps every rule of the list in use and of the built-in list, none at a lower version;
@@ -66,8 +66,8 @@ import Combine
 
 enum RecommendationsSignature {
     /// BCD's Ed25519 public key for recommended/recommendations.json: the raw 32 bytes, base64.
-    /// The private key is ~/madeira-local/state/recommendations-signing.key on the owner's Mac.
-    static let publicKey = "liaGBvtO1cgr3YnOzcvRALS6yZ2q/IinzEFqruNimcA="
+    /// SOSOalqawe12/BCD-Games: the seed is tools/recommendations-signing.seed (tools/sign-recommendations.py signs).
+    static let publicKey = "3Rv2l0pWyQX7bru5iCaBJek29GDCni3LR4MvTxfUkK8="
 
     /// A .sig file: the 64-byte signature in base64 on one line.
     static func signature(fromFile data: Data) -> Data? {
@@ -88,8 +88,8 @@ enum RecommendationsSignature {
 // MARK: - The files
 
 enum RecommendationsStore {
-    static let jsonURL = URL(string: "https://raw.githubusercontent.com/thebcd69/bcd-games/main/recommended/recommendations.json")!
-    static let signatureURL = URL(string: "https://raw.githubusercontent.com/thebcd69/bcd-games/main/recommended/recommendations.json.sig")!
+    static let jsonURL = URL(string: "https://raw.githubusercontent.com/SOSOalqawe12/BCD-Games/main/recommended/recommendations.json")!
+    static let signatureURL = URL(string: "https://raw.githubusercontent.com/SOSOalqawe12/BCD-Games/main/recommended/recommendations.json.sig")!
 
     // Set by the host checks before the first use; the app keeps these.
     static var builtInURL: URL? = Bundle.main.url(forResource: "recommendations", withExtension: "json")

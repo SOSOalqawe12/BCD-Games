@@ -125,9 +125,9 @@ workflow = (ROOT / '.github/workflows/build-ipa.yml').read_text()
 check('build-ipa.yml runs this check next to the recommended-settings one',
       'run: python3 tests/host/check-remote-recommendations.py --require-swift' in workflow
       and workflow.index('check-game-recommendations.py') < workflow.index('check-remote-recommendations.py') < workflow.index('check-autotune.py'))
-check('the two addresses: the public repository, raw, main',
-      'URL(string: "https://raw.githubusercontent.com/thebcd69/bcd-games/main/recommended/recommendations.json")!' in source
-      and 'URL(string: "https://raw.githubusercontent.com/thebcd69/bcd-games/main/recommended/recommendations.json.sig")!' in source
+check('the two addresses: this repository (SOSOalqawe12/BCD-Games), raw, main',
+      'URL(string: "https://raw.githubusercontent.com/SOSOalqawe12/BCD-Games/main/recommended/recommendations.json")!' in source
+      and 'URL(string: "https://raw.githubusercontent.com/SOSOalqawe12/BCD-Games/main/recommended/recommendations.json.sig")!' in source
       and source.count('https://') == 4)   # the two above and the two in the header comment
 key = re.search(r'static let publicKey = "([A-Za-z0-9+/=]+)"', source)
 check('the app carries a 32-byte Ed25519 public key', bool(key) and len(base64.b64decode(key.group(1))) == 32)

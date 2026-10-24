@@ -1,0 +1,30 @@
+name: Sign recommended settings
+
+# SOSOalqawe12/BCD-Games: signs recommended/recommendations.json for installed apps (tools/sign-recommendations.py)
+# with the repository secret RECS_SIGNING_SEED and commits the .sig. Run it after raising the list's "version".
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sign:
+    if: github.repository == 'SOSOalqawe12/BCD-Games'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sign
+        env:
+          RECS_SIGNING_SEED: ${{ secrets.RECS_SIGNING_SEED }}
+        run: |
+          python3 tools/sign-recommendations.py
+          python3 tools/sign-recommendations.py --check
+      - name: Commit the signature
+        run: |
+          if git diff --quiet -- recommended/recommendations.json.sig; then echo "already signed"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add recommended/recommendations.json.sig
+          git commit -m "Sign recommended settings"
+          git push

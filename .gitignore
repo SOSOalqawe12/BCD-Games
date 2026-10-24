@@ -206,3 +206,4 @@ build-out/altsource/
 app/Madeira/arm64ec-windows/bcdhost.exe
 bcd-host/out/
 app/Madeira/arm64ec-windows/kernelbase-aslr.dll
+tools/recommendations-signing.seed
