@@ -2671,7 +2671,7 @@
     {
       "id": "one-piece-bounty-rush",
       "title": "ONE PIECE Bounty Rush",
-      "version": 2,
+      "version": 3,
       "match": {
         "steamAppIDs": [2918150],
         "steamFolders": ["one piece bounty rush"]
@@ -2680,8 +2680,7 @@
         "# BCD's recommended settings for ONE PIECE Bounty Rush.",
         "# Reset to Recommended, at the bottom of the game's settings, brings them back.",
         "env.MADEIRA_EC_HOOK_TRACE = 0",
-        "env.MADEIRA_DOCK_GAME_SCM = 1",
-        "env.MADEIRA_X64_IMAGE_NOCOPY = 1"
+        "env.MADEIRA_DOCK_GAME_SCM = 1"
       ],
       "notes": [
         "SOSOalqawe12 fork, 2026-10-24: Steam starts the game (launch-client-error 0) and no window ever appears. The game",
@@ -2695,7 +2694,10 @@
         "[jit-image-retire]) and the next copy into the JIT pool reads the unmapped range from host code ([store-noalias] #3",
         "addr=0x120830000, host pc in memmove under mprotect_exec): the thread never returns and BountyRush.exe never starts.",
         "env.MADEIRA_X64_IMAGE_NOCOPY = 1 runs a pure-x64 image from its own mapping with no pool copy, so nothing is copied",
-        "from the range the loader unmaps (the same line keeps Rockstar's and Steam's launchers out of the pool). Not tried yet."
+        "from the range the loader unmaps (the same line keeps Rockstar's and Steam's launchers out of the pool). Not tried yet.",
+        "Version 3 (log 2026-10-24 18:02:29): with that line the loader is mapped without a pool copy and still stops the same",
+        "way: after it unmaps its image (0x124290000-0x125cb0000) host code copies 0x190ffe0 bytes from base+0x110000",
+        "([store-noalias] #3 addr=0x1243a0000, memmove under mprotect_exec) and never returns. The line is taken out again."
       ]
     },
     {
