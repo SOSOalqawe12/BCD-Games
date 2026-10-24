@@ -331,21 +331,43 @@ import UniformTypeIdentifiers
         ])
     }
 
+    // MARK: Notes (SOSOalqawe12 fork)
+
+    private static let notePrefix = "# Note: "
+
+    /// The game's notes: its file's "# Note: " comment line (the engine skips comments).
+    private static func notes(_ profile: GameProfile) -> String {
+        profile.text.components(separatedBy: "\n").first { $0.hasPrefix(notePrefix) }.map { String($0.dropFirst(notePrefix.count)) } ?? ""
+    }
+
+    /// Writes (or, empty, removes) the notes line; one line, at most 500 characters.
+    private static func setNotes(_ profile: GameProfile, _ value: String) {
+        let text = String(value.replacingOccurrences(of: "\n", with: " ").trimmingCharacters(in: .whitespaces).prefix(500))
+        var lines = profile.text.components(separatedBy: "\n").filter { !$0.hasPrefix(notePrefix) }
+        while lines.last == "" { lines.removeLast() }
+        if !text.isEmpty {
+            if lines.isEmpty { lines = ["# BCD settings for \(profile.windowsPath)"] }
+            lines.append(notePrefix + text)
+        }
+        profile.text = lines.joined(separator: "\n")
+    }
+
     // MARK: Copy settings (SOSOalqawe12 fork)
 
     /// The source game's file (but its Start with Steam App ID) and its display and performance choices
     /// go to the target; the target keeps its own name, program, cover and identity.
     private static func copySettings(from source: LibraryEntry, to target: LibraryEntry) {
         let from = GameProfile(windowsPath: source.windowsPath), to = GameProfile(windowsPath: target.windowsPath)
-        let keep = to.get(LocalSteamStart.key)
+        let keep = to.get(LocalSteamStart.key), keptNotes = notes(to)
         var lines = from.text.components(separatedBy: "\n").filter {
             let line = $0.trimmingCharacters(in: .whitespaces)
             return !line.hasPrefix(LocalSteamStart.key + " ") && !line.hasPrefix(LocalSteamStart.key + "=")
-                && !line.hasPrefix("# BCD settings for ")
+                && !line.hasPrefix("# BCD settings for ") && !line.hasPrefix(notePrefix)
         }
         lines.insert("# BCD settings for \(target.windowsPath) (copied from \(source.title))", at: 0)
         to.text = lines.joined(separator: "\n")
         if let keep { to.set(LocalSteamStart.key, keep) }
+        if !keptNotes.isEmpty { setNotes(to, keptNotes) }
         var entry = target
         entry.resolution = source.resolution; entry.display = source.display; entry.fpsMode = source.fpsMode
         entry.cpuCount = source.cpuCount; entry.anisotropyLimit = source.anisotropyLimit
@@ -859,6 +881,10 @@ import UniformTypeIdentifiers
         let how: String? = steamGame ? (entry.startsSteamGameDirectly ? "BCD starts this program itself, without Steam."
                                                                        : "Steam's client starts the game from this folder, with its usual launch option.") : nil
         settings.append(BCDGameSetting(id: "path", title: "Program", kind: .info, value: path, note: how))
+        // SOSOalqawe12 fork: the player's own notes, a "# Note: " comment line of the game's file.
+        settings.append(BCDGameSetting(id: "notes", title: "Notes", kind: .text(prompt: "What worked for this game"),
+                                       value: Self.notes(GameProfile(windowsPath: entry.windowsPath)),
+                                       note: "Your own words about this game, kept with its settings: the switches that made it run, a save to back up."))
         // SOSOalqawe12 fork: another game's settings, copied over this one's in one go.
         let others = LibraryModel.shared.entries.filter { $0.id != entry.id && $0.desktop != true }
             .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
@@ -1077,6 +1103,8 @@ import UniformTypeIdentifiers
         case "steam-with":   // SOSOalqawe12 fork: Start with Steam (digits only; empty turns it off)
             let id = value.trimmingCharacters(in: .whitespaces)
             if id.isEmpty || (Int(id).map(MadeiraDock.validAppID) ?? false) { setLine(game, LocalSteamStart.key, id) }
+        case "notes":   // SOSOalqawe12 fork: the game's "# Note: " line
+            if let entry = entry(for: game) { Self.setNotes(GameProfile(windowsPath: entry.windowsPath), value) }
         case "copyfrom":   // SOSOalqawe12 fork: another game's settings over this one's
             guard let id = UUID(uuidString: value), let source = LibraryModel.shared.entries.first(where: { $0.id == id }),
                   let target = entry(for: game) else { return }
