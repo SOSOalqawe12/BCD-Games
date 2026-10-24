@@ -286,6 +286,16 @@ import UniformTypeIdentifiers
                       note: "Where barriers allow lets the GPU run passes side by side wherever the game's barriers permit; one after another is the safe default."),
             Self.toggle("nvidia", "Show the game an NVIDIA card", LibraryPrefs.nvidia(entry.windowsPath),
                         note: "For games that stop with \"no graphics card\" or \"failed to get GPU driver info\": Windows then reports an NVIDIA card and driver."),
+            // SOSOalqawe12 fork: the Direct3D 12 speed lines Red Dead Redemption 2's list carries, per game.
+            Self.line("pso-warm", "Direct3D 12 pipeline warm-up", profile,
+                      [("", "Off"), ("1", "1 background compile"), ("2", "2 background compiles"), ("4", "4 background compiles")],
+                      note: "Compiles a game's pipelines in the background when it creates them, so fewer stutters the first time an effect shows up. Uses spare CPU cores. Red Dead Redemption 2 and GTA V Enhanced use 2."),
+            Self.line("indirect-fast", "Direct3D 12 fast ExecuteIndirect", profile, [("", "Off"), ("1", "On")],
+                      note: "For games that draw thousands of objects through ExecuteIndirect each frame (Red Dead Redemption 2): the repeated setup is skipped, which saves CPU time per frame."),
+            Self.line("ring-share", "Direct3D 12 shared argument memory", profile, [("", "Off"), ("1", "On")],
+                      note: "Command lists give back their argument memory as soon as the GPU is done with it. Red Dead Redemption 2 kept 1.5 GB of it without this."),
+            Self.line("d3d12-shader-pack", "Shader cache in two files", profile, [("", "Off"), ("1", "On")],
+                      note: "Converted shaders are kept in two growing files instead of one file each: faster to find and fewer files on the device. Read at app start."),
         ])
     }
 
@@ -882,7 +892,8 @@ import UniformTypeIdentifiers
         case "fps":
             guard let mode = Int(value) else { return }
             change(game) { $0.fpsMode = mode }
-        case "metalfx-upscale", "dxil-tess-max-factor", "async-submit", "fence-chain", GamepadInput.padModeKey:
+        case "metalfx-upscale", "dxil-tess-max-factor", "async-submit", "fence-chain", GamepadInput.padModeKey,
+             "pso-warm", "indirect-fast", "ring-share", "d3d12-shader-pack":
             setLine(game, setting, value)
         case "framegen":
             if #available(iOS 26.0, *) {
