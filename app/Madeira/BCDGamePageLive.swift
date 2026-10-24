@@ -510,6 +510,13 @@ import UniformTypeIdentifiers
             settings.append(BCDGameSetting(id: "envvar." + name, title: name, kind: .text(prompt: "Empty removes it"), value: value,
                                            heading: key == lines.first?.key ? "This game's variables" : nil))
         }
+        // SOSOalqawe12 fork: the whole file as it is, to read or screenshot when asking for help.
+        let file = profile.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !file.isEmpty {
+            settings.append(BCDGameSetting(id: "cfgfile", title: "This game's settings file", kind: .info,
+                                           value: file.count > 4000 ? String(file.prefix(4000)) + "\n…" : file,
+                                           note: "Every line BCD applies to this game at its start, as written."))
+        }
         return BCDGameSettingGroup(id: "environment", title: "Environment variables", symbol: "terminal", settings: settings,
                                    note: "Recommended settings use these lines too; Reset to Recommended puts them back.",
                                    headline: lines.isEmpty ? "None" : "\(lines.count) set")
