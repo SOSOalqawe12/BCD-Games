@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "version": 8,
+  "version": 9,
   "generated": "2026-10-24",
   "rules": [
     {
@@ -2666,6 +2666,28 @@
         "component(s) are required to run this program: Microsoft Visual C++ 2015-2022 Redistributable (arm64)\" and exits, as",
         "Denshattack and the FINAL FANTASY RESONANCE demo did. env.MADEIRA_VCRT_ARM64_KEY = 1 writes that entry for the session",
         "(14.44.35211.0 from build 592). Not tried on a device yet."
+      ]
+    },
+    {
+      "id": "one-piece-bounty-rush",
+      "title": "ONE PIECE Bounty Rush",
+      "version": 1,
+      "match": {
+        "steamAppIDs": [2918150],
+        "steamFolders": ["one piece bounty rush"]
+      },
+      "config": [
+        "# BCD's recommended settings for ONE PIECE Bounty Rush.",
+        "# Reset to Recommended, at the bottom of the game's settings, brings them back.",
+        "env.MADEIRA_EC_HOOK_TRACE = 0",
+        "env.MADEIRA_DOCK_GAME_SCM = 1"
+      ],
+      "notes": [
+        "SOSOalqawe12 fork, 2026-10-24: Steam starts the game (launch-client-error 0) and no window ever appears. The game",
+        "sets up Wellbia's XIGNCODE3 at its first start and runs it as a Windows service; under CrossOver and Proton, where",
+        "Wine's service manager always runs, the game starts. A BCD Dock session runs no service manager unless",
+        "env.MADEIRA_DOCK_GAME_SCM = 1 asks for it (Rockstar's launcher fails the same way without it: \"Unable to open SC",
+        "manager! (1722)\"). Not tried on a device yet."
       ]
     },
     {
