@@ -907,7 +907,11 @@ check(R.all.map { $0.fileText } == onTwelve, "a 16 GB iPad: the same lists as a 
 R.deviceRAMBytes = 7_500 << 20
 check(R.gta5LegacySteam.fileText.hasSuffix("env.MADEIRA_METAL_HUD_MAIN = 1\nswap-mb = 3072\n"),
       "an 8 GB phone: the 3 GB RAM swap after GTA V Legacy's list")
-check(zip(R.all, onTwelve).allSatisfy { $0.0.id == "gta5l-steam" || $0.0.fileText == $0.1 },
+// SOSOalqawe12 fork: GTA V Enhanced (Steam) gets its swap lines on an 8 GB phone too.
+let enhanced = R.all.first { $0.id == "gta5e-steam" }!
+check(enhanced.fileText.hasSuffix("vram-mb = 3072\nswap-mb = 8192\nswap-mode = 2\nswap-min-mb = 1\nswap-images = 1\navail-phys = 1\n"),
+      "an 8 GB phone: the swap lines after GTA V Enhanced's list")
+check(zip(R.all, onTwelve).allSatisfy { ["gta5l-steam", "gta5e-steam"].contains($0.0.id) || $0.0.fileText == $0.1 },
       "every other list is the same on an 8 GB phone")
 R.deviceRAMBytes = 11_695 << 20
 check(id(other + #"\PlayGTAV.exe"#) == "none", "PlayGTAV.exe without GTA5_Enhanced.exe beside it")
