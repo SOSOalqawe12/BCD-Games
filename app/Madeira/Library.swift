@@ -2079,7 +2079,8 @@ enum OptInDLLPreflight {
     /// Reads the program's and its folder's DLLs' imports and adds the lines they need; returns what it added.
     @discardableResult
     static func apply(_ entry: LibraryEntry) -> [String] {
-        guard entry.desktop != true, entry.launchRelativePath.lowercased().hasSuffix(".exe") else { return [] }
+        guard entry.desktop != true, entry.launchRelativePath.lowercased().hasSuffix(".exe"),
+              MadeiraConfig.flag("MADEIRA_DLL_PREFLIGHT", fallback: true) else { return [] }   // 0 in bcd.cfg: off
         let parts = entry.launchRelativePath.split(separator: "/").map(String.init)
         let folderPath = parts.dropLast().joined(separator: "/")
         let folder = ExternalDrives.realURL(forDrivePath: folderPath) ?? LibraryModel.drive.appendingPathComponent(folderPath)

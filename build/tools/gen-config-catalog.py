@@ -1071,6 +1071,13 @@ OVERLAY = {
                         "fullscreen. Needs a desktop (Dock) session. Without it the log says [tiny-win] once and nothing "
                         "changes. [win-create] in the log shows what size each program asked its window for. Set it in the "
                         "game's own file; read at session start."},
+    # SOSOalqawe12 fork: OptInDLLPreflight (app/Madeira/Library.swift).
+    "env.MADEIRA_DLL_PREFLIGHT": {"category": "Wine libraries", "title": "Switch on the DLLs a game imports before it starts",
+                "kind": "bool", "default": "1",
+                "sources": ["app/Madeira/Library.swift"],
+                "note": "On (default): before Play, BCD reads the imports of the game's program and the DLLs next to it "
+                        "and adds env.MADEIRA_WER, env.MADEIRA_WINTYPES or env.MADEIRA_OPTIN_DLLS lines for the opt-in "
+                        "DLLs they need, so the first start does not end with 0xC0000135. 0: off, as before."},
     # SOSOalqawe12 fork: kernelbase-aslr.dll (tools/patch-wine-mitigation-policy.py, linked by WineProcessBridge.m).
     "env.MADEIRA_ASLR_FIX": {"category": "Wine libraries", "title": "Fix \"disable Mandatory ASLR\" messages",
                 "kind": "bool", "default": "0",
