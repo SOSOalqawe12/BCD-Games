@@ -1433,7 +1433,16 @@ jobs:
           python3 tools/patch-dock-game-scm.py madeira-dock/src/launch.c || echo "::warning::Dock game-session service manager patch not applied"
           # env.MADEIRA_DOCK_KEEP_ALIVE = <exe>;<exe>: hold the session while a self-updating launcher restarts
           python3 tools/patch-dock-keep-alive.py madeira-dock/src/launch.c || echo "::warning::Dock keep-alive patch not applied"
-          bash build/madeira-dock/build.sh
+          # SOSOalqawe12 fork: Options › Start with Steam (MADEIRA_STEAM_HOST_LOCAL_EXE). If the host does not
+          # build with it, it is built again without it, so BCD Dock never goes missing over this change.
+          cp madeira-dock/src/launch.c "$RUNNER_TEMP/dock-launch.c"
+          if python3 tools/patch-dock-local-game.py madeira-dock/src/launch.c && bash build/madeira-dock/build.sh; then
+            echo "::notice::Dock host built with Start with Steam (games of your own)"
+          else
+            echo "::warning::Dock host did not build with Start with Steam; built without it"
+            cp "$RUNNER_TEMP/dock-launch.c" madeira-dock/src/launch.c
+            bash build/madeira-dock/build.sh
+          fi
 
       # 30 and 40 FPS caps (pacing modes 3 and 4) for the Session panel.
       - name: Patch DXMT present pacing with 30/40 FPS modes

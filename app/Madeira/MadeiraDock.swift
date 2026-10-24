@@ -619,3 +619,46 @@ enum DockOffline {
     }
     static let changed = Notification.Name("MadeiraDockOfflineChanged")
 }
+
+/// SOSOalqawe12 fork: a game of your own that needs Steam running, started through BCD Dock. Its
+/// Steam App ID is the `steam-with` line of the game's file (Options › Start with Steam). Valve's
+/// client signs in and confirms the account owns the App ID, as for any Dock start; then the Dock
+/// host starts the game's own program (MADEIRA_STEAM_HOST_LOCAL_EXE, tools/patch-dock-local-game.py)
+/// with Steam running and the game's App ID in its environment, instead of asking the client to start
+/// an install it does not have. The game's own Steam checks run as they would on a PC.
+enum LocalSteamStart {
+    static let key = "steam-with"
+
+    /// The App ID a library game of your own starts with, or nil: Steam games, the desktop and a
+    /// game without the line start as before.
+    static func appID(_ entry: LibraryEntry) -> Int? {
+        guard entry.steamAppID == nil, entry.desktop != true,
+              let text = GameProfile(windowsPath: entry.windowsPath).get(key), let id = Int(text),
+              MadeiraDock.validAppID(id) else { return nil }
+        return id
+    }
+
+    /// The Dock start's game: its App ID and name; it has no Steam library or install folder.
+    static func game(_ entry: LibraryEntry, appID: Int) -> DockGame {
+        DockGame(id: appID, name: entry.title, installDir: "", library: "", installed: true, customExecutables: false)
+    }
+
+    /// What a start needs that a Steam install's checks (MadeiraDock.validate) would otherwise confirm.
+    static func validate(_ entry: LibraryEntry, drive: URL, bundled: Bool = MadeiraDock.bundled) throws {
+        guard bundled else { throw DockError.message("This copy of BCD was built without BCD Dock.") }
+        guard FileManager.default.fileExists(atPath: drive.appendingPathComponent(SteamRuntimeFiles.relativeRoot + "/steamclient64.dll").path) else {
+            throw DockError.message("First download Valve's client components: the Steam client files aren't installed yet.")
+        }
+        guard !entry.isBatch else { throw DockError.message("Start with Steam starts a game's .exe, not a batch file.") }
+    }
+
+    /// The host's environment for this start; nil clears it, so no other Dock start inherits it.
+    static func configure(_ entry: LibraryEntry?) {
+        guard let entry else {
+            unsetenv("MADEIRA_STEAM_HOST_LOCAL_EXE"); unsetenv("MADEIRA_STEAM_HOST_LOCAL_ARGS"); return
+        }
+        setenv("MADEIRA_STEAM_HOST_LOCAL_EXE", entry.launchWindowsPath, 1)
+        setenv("MADEIRA_STEAM_HOST_LOCAL_ARGS", entry.programArguments, 1)
+        SteamLog.event("[dock-launch] local-game=1")
+    }
+}

@@ -1038,6 +1038,13 @@ enum DockInstallers {
     /// Called right before a Dock start, while no session runs (the registry is on disk).
     /// Records the previous batch's results, plans the game's programs and writes the batch.
     /// `others`: the prefix's other Dock games (a reset's shared installs, applyRequest).
+    /// SOSOalqawe12 fork: a game of your own started with Steam running (LocalSteamStart) has no Steam
+    /// install record or install script here: nothing runs before the host, as with nothing to install.
+    static func resetForLocalStart() {
+        script = nil; serverSync = false; note = nil; finishedAt = nil; logged = []; runningSince = nil; installsOnly = false
+        allSucceeded = false; sessionPrograms = []; skipsNextStart = false; failedDirectX = false
+    }
+
     static func prepare(_ game: DockGame, drive: URL, prefix: URL, others: [DockGame] = [],
                         has32Bit: Bool = DockInstallers.bundleHas32Bit, hasMsiexec: Bool = DockInstallers.bundleHasMsiexec,
                         hasWineMono: Bool = WineMonoModel.available,

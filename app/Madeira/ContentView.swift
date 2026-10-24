@@ -1267,6 +1267,19 @@ struct ContentView: View {
         // A Steam game starts through Madeira Dock with its own launch profile (SteamGames.swift),
         // unless its Game details page chose "The game": then its own program starts below, like
         // any library game (SteamDirectStart).
+        // SOSOalqawe12 fork: a game of your own with a Steam App ID (Options › Start with Steam) starts
+        // through BCD Dock: Valve's client checks the licence, then the host starts the game's own program.
+        if let appID = LocalSteamStart.appID(entry) {
+            guard !DockStartScreen.launchGate.busy(now: ProcessInfo.processInfo.systemUptime) else {
+                LogStore.shared.log("[madeira-dock] a start is already on its way: this Play is ignored app=\(appID)")
+                return
+            }
+            LogStore.shared.log("[steam-with] play app=\(appID): a game of your own, started with Steam running")
+            BCDLaunch.applyLibrary(entry, sessionLog: false)
+            startDock(LocalSteamStart.game(entry, appID: appID), compactPool: MadeiraDockModel.shared.compactPool,
+                      profile: entry, local: true)
+            return
+        }
         if let appID = entry.steamAppID, !entry.startsSteamGameDirectly {
             // A second Play while this game's Dock start is on its way changes nothing: not the
             // launch options applied below, and not the first start's sign-in (DockLaunchGate).
@@ -2171,7 +2184,7 @@ struct ContentView: View {
     /// show in the library, and the session gets the full-screen game view.
     /// `profile` is a Steam game's library entry (its Game details page): the
     /// session then takes that entry's display, performance and on-screen settings.
-    private func startDock(_ game: DockGame, compactPool: Bool, profile: LibraryEntry? = nil) {
+    private func startDock(_ game: DockGame, compactPool: Bool, profile: LibraryEntry? = nil, local: Bool = false) {
         // A second Play while a Dock start is on its way (a double tap) is ignored: its failure
         // would clean up the first start's sign-in transfer and give the account back while the
         // host signs in (Panzer Paladin 9BAP3Q: Dock code 30). DockLaunchGate.
@@ -2180,8 +2193,8 @@ struct ContentView: View {
             return
         }
         guard jitReadyForLaunch(entry: profile?.id,
-                                then: { startDock(game, compactPool: compactPool, profile: profile) }) else { return }
-        guard cloudClear(game.id, name: game.name, retry: { startDock(game, compactPool: compactPool, profile: profile) }) else { return }
+                                then: { startDock(game, compactPool: compactPool, profile: profile, local: local) }) else { return }
+        guard cloudClear(game.id, name: game.name, retry: { startDock(game, compactPool: compactPool, profile: profile, local: local) }) else { return }
         guard wine_process_is_running() == 0, wineserver_is_running() == 0, library.current == nil else {
             logStore.log("[madeira-dock] a session already ran in this app run; restart BCD first", level: .error)
             library.error = "Another session is still running."
@@ -2203,7 +2216,8 @@ struct ContentView: View {
             library.error = error.localizedDescription
         }
         do {
-            try MadeiraDock.validate(game, drive: MadeiraDock.drive)
+            if local, let profile { try LocalSteamStart.validate(profile, drive: MadeiraDock.drive) }   // SOSOalqawe12 fork
+            else { try MadeiraDock.validate(game, drive: MadeiraDock.drive) }
             try profile?.validate()
             guard SteamSignIn.isSignedIn else { throw DockError.message("BCD Dock needs a Steam sign-in. Sign in to Steam in BCD first.") }
         } catch { fail(error); return }
@@ -2217,7 +2231,8 @@ struct ContentView: View {
             // Without a choice (no configuration to be had, or no entry whose .exe is on disk:
             // a launcher started through a .bat, say) it is key 0, which every Dock start
             // used before; Dock stops at once if Steam names that entry missing.
-            let options = await SteamOwnedLibrary.shared.launchOptions(appID: game.id)
+            var options: [SteamLaunchOption]? = nil
+            if !local { options = await SteamOwnedLibrary.shared.launchOptions(appID: game.id) }   // SOSOalqawe12 fork: none for a game of your own
             let installFolder = MadeiraDock.drive.appendingPathComponent(game.library + "/common/" + game.installDir)
             let chosen = options.flatMap { SteamDirectStart.choose($0, installFolder: installFolder)?.launchIndex }
             let launchOption = chosen ?? 0
@@ -2235,16 +2250,20 @@ struct ContentView: View {
                 try MadeiraDock.writeHandoff(account: signIn.accountName, token: signIn.refreshToken, appID: game.id)
             } catch { fail(error); return }
             MadeiraDock.configure(game, launchOption: launchOption)
+            LocalSteamStart.configure(local ? profile : nil)   // SOSOalqawe12 fork: the game of your own the host starts
             // The game's one-time installs (its Steam install script) run first, in the same
             // session. No session runs yet, so the registry files can be read and written.
             // madeira-bcd: they run in a session of their own (DockInstallers.installsOnly), and
             // a Reset takes out what they installed; the other games share those installs.
-            DockInstallers.prepare(game, drive: MadeiraDock.drive, prefix: MadeiraDock.prefix,
-                                   others: MadeiraDock.games(drive: MadeiraDock.drive))
+            if local { DockInstallers.resetForLocalStart() }   // SOSOalqawe12 fork: no Steam install script
+            else {
+                DockInstallers.prepare(game, drive: MadeiraDock.drive, prefix: MadeiraDock.prefix,
+                                       others: MadeiraDock.games(drive: MadeiraDock.drive))
+            }
             // madeira-bcd (round 578): a start that has Valve's client prepare per-user executables (CEG)
             // finds Valve's own client service installed, as on Windows; the Dock host's own installer
             // step failed in 3 of 5 logged sessions (DockCEGService). No session runs yet.
-            if !DockInstallers.installsOnly {
+            if !DockInstallers.installsOnly && !local {
                 DockCEGService.prepare(game, drive: MadeiraDock.drive, prefix: MadeiraDock.prefix)
                 // madeira-bcd (2026-10-21): Valve's client added Counter-Strike 2's dependency on the
                 // redistributables app 228980, which BCD never installs, and every later start waited

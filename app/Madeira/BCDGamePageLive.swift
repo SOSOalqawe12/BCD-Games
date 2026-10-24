@@ -121,6 +121,7 @@ import UniformTypeIdentifiers
             if let id { d.groups.append(steamGroup(entry, id)) }
             if let dlc = dlcGroup(game) { d.groups.append(dlc) }
             if !desktop { d.groups.append(libraryGroup(entry, gog: game.store == .gog || game.store == .epic)) }
+            if id == nil && !desktop { d.groups.append(withSteam(profile)) }   // SOSOalqawe12 fork: Start with Steam
             d.groups.append(memory(profile))      // SOSOalqawe12 fork: Memory
             d.groups.append(libraries(profile))   // SOSOalqawe12 fork: Libraries override
             d.groups.append(environment(profile)) // SOSOalqawe12 fork: Environment variables
@@ -324,6 +325,21 @@ import UniformTypeIdentifiers
             Self.toggle("nocopy", "64-bit programs without a second copy", profile.get("env.MADEIRA_X64_IMAGE_NOCOPY") == "1",
                         note: "The emulator runs a 64-bit-only program and its DLLs where they are loaded, instead of from a copy in BCD's code pool. Saves hundreds of MB in big games and launchers; 27 tuned games use it, and on an 8 GB device every game without a tuned list has it."),
         ])
+    }
+
+    // MARK: Start with Steam (SOSOalqawe12 fork)
+
+    /// A game of your own that needs Steam running (a Steam copy kept outside Steam's library, on an
+    /// external drive, say): its Steam App ID in the game's file (`steam-with`). Play then starts
+    /// BCD Dock: Valve's client signs in, checks this account owns the App ID, and starts the
+    /// game's own program with Steam running (LocalSteamStart).
+    private func withSteam(_ profile: GameProfile) -> BCDGameSettingGroup {
+        let current = profile.get(LocalSteamStart.key) ?? ""
+        return BCDGameSettingGroup(id: "with-steam", title: "Start with Steam", symbol: "cloud", settings: [
+            BCDGameSetting(id: "steam-with", title: "Steam App ID", kind: .text(prompt: "e.g. 346110"), value: current,
+                           note: "For a Steam game you added from a folder (an external drive, say) that stops with \"Steam must be running\". With its App ID set, Play signs in to Steam through BCD Dock, Steam checks that your account owns the game, and the game starts with Steam running. The App ID is the number in the game's Steam store link. Empty starts the game on its own."),
+        ], note: "Needs a Steam sign-in in BCD and Valve's client components (Settings › BCD Dock).",
+           headline: current.isEmpty ? "Off" : "App \(current)")
     }
 
     // MARK: Environment variables (SOSOalqawe12 fork)
@@ -912,6 +928,9 @@ import UniformTypeIdentifiers
         case "semaphores": change(game) { $0.semaphoreFastPath = on }
         case "aslrfix": setLine(game, "env.MADEIRA_ASLR_FIX", on ? "1" : "")
         case "swap-mb", "swap-mode", "vram-mb", "avail-phys": setLine(game, setting, value)
+        case "steam-with":   // SOSOalqawe12 fork: Start with Steam (digits only; empty turns it off)
+            let id = value.trimmingCharacters(in: .whitespaces)
+            if id.isEmpty || (Int(id).map(MadeiraDock.validAppID) ?? false) { setLine(game, LocalSteamStart.key, id) }
         case "nocopy": setLine(game, "env.MADEIRA_X64_IMAGE_NOCOPY", on ? "1" : "")
         case "leandiag": setLine(game, "env.MADEIRA_LEAN_DIAG", on ? "1" : "")
         case "touch": change(game) { $0.touchControls = on }

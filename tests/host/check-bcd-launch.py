@@ -202,13 +202,20 @@ started = code(block(content, "private func startLibraryEntry(_ entry: LibraryEn
 check(ordered(started, "try entry.validate()", "entry.configureLaunch()", "BCDLaunch.applyLibrary(entry, sessionLog: false)",
               "LogStore.shared.startSessionLog(program: program)", "library.begin(entry)", "runWineFullSequence(profile: entry)"),
       "Play with JIT on: the profile's checks, the game's options, its log, the session")
-dock = code(block(content, "private func startDock(_ game: DockGame, compactPool: Bool, profile: LibraryEntry? = nil)"))
+dock = code(block(content, "private func startDock(_ game: DockGame, compactPool: Bool, profile: LibraryEntry? = nil, local: Bool = false)"))
 check(ordered(dock, "jitReadyForLaunch(entry: profile?.id,",
               "cloudClear(game.id, name: game.name, retry:",
               "try MadeiraDock.validate(game, drive: MadeiraDock.drive)", "try profile?.validate()",
               "DockInstallers.prepare(game, drive: MadeiraDock.drive, prefix: MadeiraDock.prefix,",
               "if let profile { library.begin(profile, dock: game) }", "runWineFullSequence(profile: profile)"),
       "BCD Dock: JIT (the library's prompt), Steam Cloud, the checks, the one-time installs, the game's session")
+# SOSOalqawe12 fork: Options › Start with Steam (LocalSteamStart): a game of your own with a Steam App ID
+# starts through the same Dock start, with its own checks and no Steam install script.
+check(ordered(dock, "if local, let profile { try LocalSteamStart.validate(profile, drive: MadeiraDock.drive) }",
+              "LocalSteamStart.configure(local ? profile : nil)", "if local { DockInstallers.resetForLocalStart() }")
+      and ordered(code(launch), "if let appID = LocalSteamStart.appID(entry) {", "profile: entry, local: true)",
+                  "if let appID = entry.steamAppID, !entry.startsSteamGameDirectly {"),
+      "Start with Steam: a game of your own goes through the Dock start before the Steam game paths")
 jit = code(block(content, "private func jitReadyForLaunch("))
 check(ordered(jit, "if StikJITHelper.ready { return true }", "if let launch {", "launchAfterJIT = launch",
               "library.startingJIT = entry", "if jitStatus != .testing { enableJIT() }"),
