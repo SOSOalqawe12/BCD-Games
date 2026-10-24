@@ -356,9 +356,9 @@ import UniformTypeIdentifiers
                            note: "For a Steam game you added from a folder (an external drive, say) that stops with \"Steam must be running\". With its App ID set, Play signs in to Steam through BCD Dock, Steam checks that your account owns the game, and the game starts with Steam running. The App ID is the number in the game's Steam store link. Empty starts the game on its own."),
         ]
         // The game's own steam_appid.txt names its App ID: one tap fills it in.
-        if current.isEmpty, let found = LocalSteamStart.suggestedAppID(entry) {
-            settings.append(BCDGameSetting(id: "steam-with-found", title: "Use App ID \(found)", kind: .action,
-                                           note: "The game's own steam_appid.txt names this App ID."))
+        if current.isEmpty, let found = LocalSteamStart.suggestion(entry) {
+            settings.append(BCDGameSetting(id: "steam-with-found", title: "Use App ID \(found.id)", kind: .action,
+                                           note: found.source))
         }
         return BCDGameSettingGroup(id: "with-steam", title: "Start with Steam", symbol: "cloud", settings: settings,
                                    note: "Needs a Steam sign-in in BCD and Valve's client components (Settings › BCD Dock).",
@@ -960,8 +960,8 @@ import UniformTypeIdentifiers
         case "openfolder":   // SOSOalqawe12 fork: the Files app at the game's folder
             if let entry = entry(for: game) { Self.openInFiles(entry) }
         case "steam-with-found":   // SOSOalqawe12 fork: the App ID the game's steam_appid.txt names
-            if let entry = entry(for: game), let found = LocalSteamStart.suggestedAppID(entry) {
-                setLine(game, LocalSteamStart.key, String(found))
+            if let entry = entry(for: game), let found = LocalSteamStart.suggestion(entry) {
+                setLine(game, LocalSteamStart.key, String(found.id))
             }
         case "nocopy": setLine(game, "env.MADEIRA_X64_IMAGE_NOCOPY", on ? "1" : "")
         case "leandiag": setLine(game, "env.MADEIRA_LEAN_DIAG", on ? "1" : "")

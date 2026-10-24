@@ -1992,6 +1992,17 @@ enum ExternalDrives {
         return parts.dropFirst(2).reduce(drive.target) { $0.appendingPathComponent($1) }
     }
 
+    /// SOSOalqawe12 fork: for a game on an external drive that is not connected, what Play says; nil
+    /// for a game elsewhere, or on a drive that is there.
+    static func missingDrive(_ relativePath: String) -> String? {
+        let parts = relativePath.split(separator: "/").map(String.init)
+        guard parts.count >= 3, parts[0] == "External" else { return nil }
+        let name = parts[1]
+        if let drive = opened.first(where: { $0.name == name }),
+           FileManager.default.fileExists(atPath: drive.target.path) { return nil }
+        return "This game is on the external drive \"\(name)\", and BCD can't reach it. Connect the drive, restart BCD, then press Play again."
+    }
+
     /// The path inside drive_c of a file on an opened drive, or of a file in drive_c itself; nil
     /// for anything else. A link into a drive resolves to the drive, so this maps it back.
     static func driveRelative(_ url: URL) -> String? {

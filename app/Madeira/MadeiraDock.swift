@@ -656,6 +656,13 @@ enum LocalSteamStart {
         return nil
     }
 
+    /// Where a suggestion came from, for its row: the game's steam_appid.txt, else Find on Steam.
+    static func suggestion(_ entry: LibraryEntry) -> (id: Int, source: String)? {
+        if let id = suggestedAppID(entry) { return (id, "The game's own steam_appid.txt names this App ID.") }
+        if let id = entry.steamID, MadeiraDock.validAppID(id) { return (id, "Find on Steam matched the game to this App ID.") }
+        return nil
+    }
+
     /// The Dock start's game: its App ID and name; it has no Steam library or install folder.
     static func game(_ entry: LibraryEntry, appID: Int) -> DockGame {
         DockGame(id: appID, name: entry.title, installDir: "", library: "", installed: true, customExecutables: false)

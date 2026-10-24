@@ -1259,6 +1259,8 @@ struct ContentView: View {
         // madeira-bcd: what this device's GPU or CPU cannot run is refused here, before JIT is
         // asked for (DeviceCapability.swift); A14 and later devices always pass.
         if let refusal = DeviceCapability.libraryRefusal(entry) { library.error = refusal; return }
+        // SOSOalqawe12 fork: a game on an external drive that is not connected says so (ExternalDrives).
+        if let missing = ExternalDrives.missingDrive(entry.relativePath) { library.error = missing; return }
         // madeira-bcd: a game seen for the first time starts with Madeira's recommended
         // settings (GameRecommendationsApply.swift).
         var entry = entry
