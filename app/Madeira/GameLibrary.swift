@@ -121,7 +121,10 @@ enum GameLibrary {
                     walk(entry, depth: depth + 1, title: title ?? titleFor(entry))
                 } else if entry.pathExtension.lowercased() == "exe" {
                     if noiseNames.contains(entry.lastPathComponent.lowercased()) { continue }
-                    guard let windows = windowsPath(for: entry, root: root) else { continue }
+                    // SOSOalqawe12 fork: a program on an external drive keeps its drive_c path (C:\External\<name>\...).
+                    guard let windows = windowsPath(for: entry, root: root)
+                            ?? ExternalDrives.driveRelative(entry).map({ "C:\\" + $0.replacingOccurrences(of: "/", with: "\\") })
+                    else { continue }
                     found.append(GuestExecutable(
                         windowsPath: windows,
                         url: entry,
@@ -133,6 +136,9 @@ enum GameLibrary {
         }
 
         walk(root, depth: 0, title: nil)
+        // SOSOalqawe12 fork: the games on the external drives added to BCD (ExternalDrives), read at each
+        // drive's own path: their links in drive_c/External are not followed above.
+        for drive in ExternalDrives.opened { walk(drive.target, depth: 0, title: nil) }
         found = splitContainers(found, root: root)
 
         // Biggest first: a game's shipping binary dwarfs the launchers next to it,
