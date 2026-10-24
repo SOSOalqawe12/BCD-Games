@@ -243,6 +243,9 @@ import UniformTypeIdentifiers
             settings.append(Self.toggle("framegen", "Frame generation (experimental)", profile.get("env.MADEIRA_FRAMEGEN") == "1",
                                         note: "MetalFX makes up a frame between every two the game draws: twice the frames, for GPU time, a little delay and some smearing at edges and the HUD. The frame-rate limit is ignored while it is on."))
         }
+        // SOSOalqawe12 fork: env.MADEIRA_LEAN_DIAG for this game.
+        settings.append(Self.toggle("leandiag", "Smoother play: fewer diagnostics", profile.get("env.MADEIRA_LEAN_DIAG") == "1",
+                                    note: "Stops the samplers that pause the game's threads every 20 seconds to record what they run, and slows BCD's memory checks. Can remove regular small hitches. Logs say less about a crash, so turn it on once a game runs."))
         return BCDGameSettingGroup(id: "display", title: "Display", symbol: "display", settings: settings,
                                    headline: entry.resolution.replacingOccurrences(of: "x", with: " × ") + " · " + fps)
     }
@@ -910,6 +913,7 @@ import UniformTypeIdentifiers
         case "aslrfix": setLine(game, "env.MADEIRA_ASLR_FIX", on ? "1" : "")
         case "swap-mb", "swap-mode", "vram-mb", "avail-phys": setLine(game, setting, value)
         case "nocopy": setLine(game, "env.MADEIRA_X64_IMAGE_NOCOPY", on ? "1" : "")
+        case "leandiag": setLine(game, "env.MADEIRA_LEAN_DIAG", on ? "1" : "")
         case "touch": change(game) { $0.touchControls = on }
         case "overlay": change(game) { $0.performance = on }
         case "livelogs": change(game) { $0.liveLogs = on }
