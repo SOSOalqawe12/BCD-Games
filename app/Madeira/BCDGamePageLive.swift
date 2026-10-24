@@ -123,6 +123,7 @@ import UniformTypeIdentifiers
             if !desktop { d.groups.append(libraryGroup(entry, gog: game.store == .gog || game.store == .epic)) }
             d.groups.append(memory(profile))      // SOSOalqawe12 fork: Memory
             d.groups.append(libraries(profile))   // SOSOalqawe12 fork: Libraries override
+            d.groups.append(environment(profile)) // SOSOalqawe12 fork: Environment variables
         }
         if let id {
             let installed = SteamGamesModel.shared.games.first { $0.id == id }
@@ -308,6 +309,42 @@ import UniformTypeIdentifiers
             Self.line("avail-phys", "Report memory left before the limit", profile, [("", "Off"), ("1", "On")],
                       note: "The game sees how much memory is left before iOS would close it, instead of the device's free memory, so games and their launchers can free caches in time."),
         ])
+    }
+
+    // MARK: Environment variables (SOSOalqawe12 fork)
+
+    /// Every env.NAME line of the game's own file, editable, and a row to add one ("NAME=value").
+    private func environment(_ profile: GameProfile) -> BCDGameSettingGroup {
+        let lines = profile.values.filter { $0.key.hasPrefix("env.") && !$0.value.isEmpty }.sorted { $0.key < $1.key }
+        var settings = [
+            BCDGameSetting(id: "env.add", title: "Add a variable", kind: .text(prompt: "NAME=value"), value: "",
+                           note: "Exported to the game's Windows processes at its next start, after Settings' own (the game's line wins)."),
+        ]
+        for (key, value) in lines {
+            let name = String(key.dropFirst(4))
+            settings.append(BCDGameSetting(id: "envvar." + name, title: name, kind: .text(prompt: "Empty removes it"), value: value,
+                                           heading: key == lines.first?.key ? "This game's variables" : nil))
+        }
+        return BCDGameSettingGroup(id: "environment", title: "Environment variables", symbol: "terminal", settings: settings,
+                                   note: "Recommended settings use these lines too; Reset to Recommended puts them back.",
+                                   headline: lines.isEmpty ? "None" : "\(lines.count) set")
+    }
+
+    /// A variable name Windows and the launch accept: a letter or _, then letters, digits or _.
+    private static func envName(_ text: String) -> String? {
+        let name = text.trimmingCharacters(in: .whitespaces)
+        guard let first = name.unicodeScalars.first, first == "_" || CharacterSet.letters.contains(first), name.count <= 128,
+              name.unicodeScalars.allSatisfy({ $0 == "_" || ($0.isASCII && CharacterSet.alphanumerics.contains($0)) }) else { return nil }
+        return name
+    }
+
+    private func setEnv(_ game: BCDGame, _ setting: String, _ value: String) {
+        if setting == "env.add" {
+            guard let eq = value.firstIndex(of: "="), let name = Self.envName(String(value[..<eq])) else { return }
+            setLine(game, "env." + name, value[value.index(after: eq)...].trimmingCharacters(in: .whitespaces))
+        } else if let name = Self.envName(String(setting.dropFirst(7))) {
+            setLine(game, "env." + name, value.trimmingCharacters(in: .whitespaces))
+        }
     }
 
     // MARK: Libraries override (SOSOalqawe12 fork)
@@ -917,6 +954,8 @@ import UniformTypeIdentifiers
             change(game) { $0.title = name }
         case "storeart": change(game) { $0.coverFile = nil }
         case _ where setting.hasPrefix("dll."): setDll(game, setting, value)
+        case "env.add": setEnv(game, setting, value)
+        case _ where setting.hasPrefix("envvar."): setEnv(game, setting, value)
         default:
             break
         }
