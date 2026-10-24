@@ -13,6 +13,7 @@ from pathlib import Path
 import subprocess
 
 OVERLAY_BASE = 'db546ee466ad50ec6463edb5fa183de11db43761'
+UPSTREAM = 'https://github.com/willfaust/dxmt'
 PIN_MARKER = 'madeira_rp_lean_on'   # willfaust/dxmt#26, in the wave's pin and later
 
 
@@ -23,5 +24,8 @@ def rev(dxmt):
         return 'HEAD'
     have = subprocess.run(['git', '-C', str(dxmt), 'cat-file', '-e', OVERLAY_BASE + '^{commit}'], capture_output=True)
     if have.returncode:
-        subprocess.run(['git', '-C', str(dxmt), 'fetch', '-q', '--depth=1', 'origin', OVERLAY_BASE], check=True)
+        # BCD's public dxmt mirror lacks the commit; upstream Madeira's dxmt has it.
+        fetched = subprocess.run(['git', '-C', str(dxmt), 'fetch', '-q', '--depth=1', 'origin', OVERLAY_BASE])
+        if fetched.returncode:
+            subprocess.run(['git', '-C', str(dxmt), 'fetch', '-q', '--depth=1', UPSTREAM, OVERLAY_BASE], check=True)
     return OVERLAY_BASE

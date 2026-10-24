@@ -20,6 +20,7 @@ OVERLAY_TREES = ('FEXCore/Source', 'FEXCore/include', 'Source/Windows', 'Externa
 # "ec-ret-direct-v1 madeira-bcd"`). The checks still evaluate each overlay on the
 # chain's own input: the pin the overlays were written against, OVERLAY_BASE.
 OVERLAY_BASE = '3bec2ac498bf78156ab47c0c194b0e8cb2849756'
+UPSTREAM = 'https://github.com/willfaust/FEX'
 PIN_MARKER = 'ec-ret-direct-v1 madeira-bcd'
 
 
@@ -50,7 +51,10 @@ def overlay_base(root, tmp):
     base = Path(tmp) / 'base'
     have = subprocess.run(['git', '-C', str(fex), 'cat-file', '-e', OVERLAY_BASE + '^{commit}'], capture_output=True)
     if have.returncode:
-        subprocess.run(['git', '-C', str(fex), 'fetch', '-q', '--depth=1', 'origin', OVERLAY_BASE], check=True)
+        # BCD's public FEX mirror lacks the commit; upstream Madeira's FEX has it.
+        fetched = subprocess.run(['git', '-C', str(fex), 'fetch', '-q', '--depth=1', 'origin', OVERLAY_BASE])
+        if fetched.returncode:
+            subprocess.run(['git', '-C', str(fex), 'fetch', '-q', '--depth=1', UPSTREAM, OVERLAY_BASE], check=True)
     trees = [rel for rel in OVERLAY_TREES if not rel.startswith('External/')]
     archive = subprocess.run(['git', '-C', str(fex), 'archive', OVERLAY_BASE] + trees, check=True, capture_output=True)
     base.mkdir(parents=True)

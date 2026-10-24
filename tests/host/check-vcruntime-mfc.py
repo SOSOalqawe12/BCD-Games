@@ -68,8 +68,10 @@ check("on: MFC goes through the same symlink as the runtime DLLs",
       blk.index('hasPrefix:@"mfc"') < blk.index("createSymbolicLinkAtPath:dst withDestinationPath:src"))
 check("the game's env lines are exported before the links are made",
       m.index('const char *gameCfg = getenv("MADEIRA_CFG_GAME");') < m.index('const char *mfcEnv = getenv("MADEIRA_MFC");'))
-doc = (root / "tools/fetch-vcruntime.md").read_text()
-check("tools/fetch-vcruntime.md lists MFC", "mfc140.dll" in doc and "mfc140u.dll" in doc and "Fourteen files" in doc)
+# The public tree (BCD-Games) leaves this note out with the other Markdown files.
+if (root / "tools/fetch-vcruntime.md").is_file():
+    doc = (root / "tools/fetch-vcruntime.md").read_text()
+    check("tools/fetch-vcruntime.md lists MFC", "mfc140.dll" in doc and "mfc140u.dll" in doc and "Fourteen files" in doc)
 cat = (root / "app/Madeira/ConfigCatalog.generated.swift").read_text()
 check("catalog lists env.MADEIRA_MFC, on by default",
       re.search(r'key: "env.MADEIRA_MFC".*kind: \.bool, defaultValue: "1"', cat) is not None)
