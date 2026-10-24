@@ -124,6 +124,7 @@ import UniformTypeIdentifiers
             if !desktop { d.groups.append(libraryGroup(entry, gog: game.store == .gog || game.store == .epic)) }
             if id == nil && !desktop { d.groups.append(withSteam(entry, profile)) }   // SOSOalqawe12 fork: Start with Steam
             d.groups.append(powerSound(profile))  // SOSOalqawe12 fork: Power, sound and logs
+            d.groups.append(languageWindows(profile))   // SOSOalqawe12 fork: Language and windows
             d.groups.append(memory(profile))      // SOSOalqawe12 fork: Memory
             d.groups.append(libraries(profile))   // SOSOalqawe12 fork: Libraries override
             d.groups.append(environment(profile)) // SOSOalqawe12 fork: Environment variables
@@ -402,6 +403,29 @@ import UniformTypeIdentifiers
             Self.envLine("env.WINEDEBUG", "Detailed log", profile,
                          [("", "Off"), ("err+all,fixme+all,warn+module,warn+file,trace+loaddll", "On: more lines to send for help")],
                          note: "Writes what Windows programs load and what Wine doesn't support yet into the game's log, for a log you send to get a game working. Logs get bigger and the game can run a little slower; turn it off again after."),
+        ], note: "Each is read when the game starts.")
+    }
+
+    // MARK: Language and windows (SOSOalqawe12 fork)
+
+    /// The Windows language a game sees, Asian code pages, a held key's repeat, and two fixes for games
+    /// whose window does not come up right; each an env line of the game's own file.
+    private func languageWindows(_ profile: GameProfile) -> BCDGameSettingGroup {
+        BCDGameSettingGroup(id: "language-windows", title: "Language and windows", symbol: "globe", settings: [
+            Self.envLine("env.LC_ALL", "Windows language", profile,
+                         [("", "As this phone"), ("en_US.UTF-8", "English (US)"), ("en_GB.UTF-8", "English (UK)"),
+                          ("ja_JP.UTF-8", "Japanese"), ("zh_CN.UTF-8", "Chinese (Simplified)"), ("ko_KR.UTF-8", "Korean"),
+                          ("de_DE.UTF-8", "German"), ("fr_FR.UTF-8", "French"), ("es_ES.UTF-8", "Spanish"),
+                          ("ar_SA.UTF-8", "Arabic"), ("ru_RU.UTF-8", "Russian")],
+                         note: "The language and region Windows reports to the game. English helps a game that crashes or shows broken text in this phone's language; Japanese or Chinese helps games that only show their text in those."),
+            Self.envLine("env.MADEIRA_NLS_EXTRA", "Asian code pages", profile, [("", "Off"), ("1", "On")],
+                         note: "Loads the Japanese, Chinese and Korean text tables, for games whose text turns into question marks or boxes."),
+            Self.envLine("env.MADEIRA_KEY_REPEAT", "Repeat a held key", profile, [("", "Off"), ("1", "On, as on Windows")],
+                         note: "With a hardware keyboard, holding a key repeats it, for typing and games that move with a held key."),
+            Self.envLine("env.MADEIRA_INPUT_FOREGROUND", "Bring the game to the front", profile, [("", "Off"), ("1", "On")],
+                         note: "For a game that ignores the controller and keyboard because its window never became the active one."),
+            Self.envLine("env.MADEIRA_TINY_WINDOW_FIX", "Size a tiny window to the screen", profile, [("", "Off"), ("1", "On")],
+                         note: "For a game whose picture stays a tiny box in a corner: its window is sized to the screen."),
         ], note: "Each is read when the game starts.")
     }
 
