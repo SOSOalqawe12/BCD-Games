@@ -677,8 +677,36 @@ final class LibraryModel: ObservableObject {
             LogStore.shared.log("[exit-report] the executable window could not be widened to \(mb) MB in this run")
             return "The game quit with Windows error 0xC0000018 (conflicting addresses). This run of BCD could not widen the memory its program starts in to the \(mb) MB the game's settings ask for, because iOS had put something else there. Quit BCD (swipe it away in the app switcher), open it again and start the game."
         }
-        let kind = status == 0xC0000005 ? " (access violation)" : status == 0xC0000017 ? " (not enough memory)" : ""
+        // SOSOalqawe12 fork: 0xC0000135 names the Windows file that was missing, from the session's log.
+        if status == 0xC0000135, let missing = Self.missingDLL(LogStore.shared.logFileURL) {
+            LogStore.shared.log("[exit-report] missing \(missing.dll) (needed by \(missing.by))")
+            return "The game quit because a Windows file it needs is missing: \(missing.dll) (needed by \(missing.by)). If the game ships that file, check that its folder was copied completely. Otherwise press Play again: BCD switches on the Windows files it can add, and auto-tune tries again. To report the problem, export the diagnostic log."
+        }
+        let kind = status == 0xC0000005 ? " (access violation)" : status == 0xC0000017 ? " (not enough memory)" : status == 0xC0000135 ? " (a DLL is missing)" : ""
         return "The game quit with Windows error 0x\(String(status, radix: 16, uppercase: true))\(kind). To report the problem, export the diagnostic log."
+    }
+    /// The last "import_dll Library X (which is needed by Y) not found" of the log's last 4 MB: the DLL and
+    /// the file that needed it (its name only, no folder).
+    static func missingDLL(_ log: URL) -> (dll: String, by: String)? {
+        guard let h = try? FileHandle(forReadingFrom: log) else { return nil }
+        defer { try? h.close() }
+        let size = (try? h.seekToEnd()) ?? 0
+        let start = size > 4 << 20 ? size - (4 << 20) : 0
+        guard (try? h.seek(toOffset: start)) != nil, let data = try? h.readToEnd() else { return nil }
+        let text = String(decoding: data, as: UTF8.self)
+        var found: (String, String)?
+        for line in text.split(separator: "\n") where line.contains("import_dll Library ") && line.contains(" not found") {
+            guard let a = line.range(of: "import_dll Library "), let b = line.range(of: " (which is needed by ", range: a.upperBound..<line.endIndex),
+                  let c = line.range(of: ") not found", range: b.upperBound..<line.endIndex) else { continue }
+            let dll = String(line[a.upperBound..<b.lowerBound])
+            var by = String(line[b.upperBound..<c.lowerBound])
+            if by.hasPrefix("L\"") { by.removeFirst(2) }
+            if by.hasSuffix("\"") { by.removeLast() }
+            by = by.replacingOccurrences(of: "\\\\", with: "\\")
+            if let cut = by.lastIndex(where: { $0 == "\\" || $0 == "/" }) { by = String(by[by.index(after: cut)...]) }
+            if !dll.isEmpty, dll.count <= 120, !by.isEmpty, by.count <= 260 { found = (dll, by) }
+        }
+        return found
     }
     private var readOnly = false
     private var metadataInFlight = Set<UUID>()
