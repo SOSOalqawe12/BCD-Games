@@ -1266,6 +1266,8 @@ struct ContentView: View {
         var entry = entry
         let isNew = !library.entries.contains { $0.id == entry.id }
         if GameRecommendations.prepare(&entry, new: isNew) { library.save(entry) }
+        // SOSOalqawe12 fork: the opt-in Windows DLLs the game imports are on before its start (no 0xC0000135).
+        OptInDLLPreflight.apply(entry)
         // A Steam game starts through Madeira Dock with its own launch profile (SteamGames.swift),
         // unless its Game details page chose "The game": then its own program starts below, like
         // any library game (SteamDirectStart).

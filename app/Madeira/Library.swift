@@ -2017,3 +2017,59 @@ enum ExternalDrives {
         return nil
     }
 }
+
+/// SOSOalqawe12 fork: Windows DLLs BCD gives a game only when it asks (wer, wintypes and the
+/// *-optin.dll set) are switched on before the game's first start when its program, or a DLL next to
+/// it, imports one. Without this the start ended at once with 0xC0000135 (DLL not found) and only
+/// auto-tune's next start had the line. Lines already in the game's file are left as they are; a DLL
+/// the game ships itself in that folder is not asked for. Logged as [dll-preflight].
+enum OptInDLLPreflight {
+    /// Imported name -> the line that gives the game Wine's copy.
+    static let switches: [String: String] = [
+        "wer.dll": "env.MADEIRA_WER",
+        "wintypes.dll": "env.MADEIRA_WINTYPES",
+        "api-ms-win-core-winrt-robuffer-l1-1-0.dll": "env.MADEIRA_WINTYPES",
+    ]
+    /// Imported name -> its MADEIRA_OPTIN_DLLS entry (setupapi is shipped to every game).
+    static let optIn: [String: String] = [
+        "dxva2.dll": "dxva2", "evr.dll": "evr", "xpsprint.dll": "xpsprint", "sfc.dll": "sfc", "sfc_os.dll": "sfc_os",
+        "tbs.dll": "tbs", "twinapi.appcore.dll": "twinapi.appcore",
+    ]
+
+    /// Reads the program's and its folder's DLLs' imports and adds the lines they need; returns what it added.
+    @discardableResult
+    static func apply(_ entry: LibraryEntry) -> [String] {
+        guard entry.desktop != true, entry.launchRelativePath.lowercased().hasSuffix(".exe") else { return [] }
+        let parts = entry.launchRelativePath.split(separator: "/").map(String.init)
+        let folderPath = parts.dropLast().joined(separator: "/")
+        let folder = ExternalDrives.realURL(forDrivePath: folderPath) ?? LibraryModel.drive.appendingPathComponent(folderPath)
+        let exe = folder.appendingPathComponent(parts.last ?? "")
+        let fm = FileManager.default
+        let local = (try? fm.contentsOfDirectory(atPath: folder.path)) ?? []
+        let localNames = Set(local.map { $0.lowercased() })
+        var files = [exe]
+        files += local.filter { $0.lowercased().hasSuffix(".dll") }.prefix(64).map { folder.appendingPathComponent($0) }
+        var imported = Set<String>()
+        for file in files { imported.formUnion(LibraryModel.importNames(file)) }
+        let profile = GameProfile(windowsPath: entry.windowsPath)
+        var added: [String] = []
+        for (name, key) in switches where imported.contains(name) && !localNames.contains(name) && profile.get(key) == nil {
+            profile.set(key, "1")
+            added.append("\(key) = 1 (\(name))")
+        }
+        let wanted = optIn.filter { imported.contains($0.key) && !localNames.contains($0.key) }.map(\.value)
+        if !wanted.isEmpty {
+            let current = (profile.get("env.MADEIRA_OPTIN_DLLS") ?? "")
+                .split(whereSeparator: { ",; ".contains($0) }).map { $0.lowercased() }
+            let missing = wanted.filter { !current.contains($0) }.sorted()
+            if !missing.isEmpty {
+                profile.set("env.MADEIRA_OPTIN_DLLS", (current + missing).joined(separator: ","))
+                added.append("env.MADEIRA_OPTIN_DLLS += \(missing.joined(separator: ","))")
+            }
+        }
+        if !added.isEmpty {
+            LogStore.shared.log("[dll-preflight] \(entry.title): \(added.joined(separator: "; ")) before the start")
+        }
+        return added
+    }
+}
