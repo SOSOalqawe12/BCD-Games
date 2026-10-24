@@ -4336,9 +4336,52 @@ NTSTATUS WINAPI NtQueryInformationProcess( HANDLE handle, PROCESSINFOCLASS class
             break;
         }
 
+    /* SOSOalqawe12 fork: env.MADEIRA_ASLR_FIX = 1 also answers the native query. Demon
+     * Slayer -Kimetsu no Yaiba- The Hinokami Chronicles 2 (APK2-Win64-Shipping.exe, log
+     * 2026-10-24 23:55:51) still said "Disable Mandatory ASLR" with kernelbase-aslr.dll in
+     * place: it does not ask GetProcessMitigationPolicy, and this class fell to the default
+     * (STATUS_INVALID_INFO_CLASS). The policy number comes in the buffer; the flags go back
+     * zeroed, so every policy reads as not forced, as on a Windows PC at its defaults. */
+    case ProcessMitigationPolicy:
+    {
+        static int aslr_fix = -1, logged;
+        const char *e;
+
+        if (aslr_fix < 0) aslr_fix = (e = getenv( "MADEIRA_ASLR_FIX" )) && e[0] == '1';
+        if (!aslr_fix)
+        {
+            ret = STATUS_INVALID_INFO_CLASS;
+            break;
+        }
+        len = 2 * sizeof(DWORD);   /* PROCESS_MITIGATION_POLICY_INFORMATION: Policy + one DWORD of flags */
+        if (size != len) ret = STATUS_INFO_LENGTH_MISMATCH;
+        else if (!info) ret = STATUS_ACCESS_VIOLATION;
+        else if (((DWORD *)info)[0] >= MaxProcessMitigationPolicy) ret = STATUS_INVALID_PARAMETER;
+        else ((DWORD *)info)[1] = 0;
+        if (logged < 8)
+        {
+            logged++;
+            dprintf( 2, "[aslr-fix] NtQueryInformationProcess(ProcessMitigationPolicy) policy=%d size=%u -> %08x "
+                     "(not forced)\n", info && size >= sizeof(DWORD) ? (int)((DWORD *)info)[0] : -1,
+                     (unsigned)size, (unsigned)ret );
+        }
+        break;
+    }
+
     default:
         FIXME("(%p,info_class=%d,%p,0x%08x,%p) Unknown information class\n",
               handle, class, info, size, ret_len );
+        {   /* SOSOalqawe12 fork: with env.MADEIRA_ASLR_FIX = 1 the log names the classes a game
+             * asks that have no answer, which FIXME does not show at BCD's default WINEDEBUG. */
+            static int n;
+            const char *e = getenv( "MADEIRA_ASLR_FIX" );
+            if (e && e[0] == '1' && n < 16)
+            {
+                n++;
+                dprintf( 2, "[aslr-fix] NtQueryInformationProcess class %d has no answer (STATUS_INVALID_INFO_CLASS)\n",
+                         (int)class );
+            }
+        }
         ret = STATUS_INVALID_INFO_CLASS;
         break;
     }
