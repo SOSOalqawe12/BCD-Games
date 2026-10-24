@@ -18675,7 +18675,31 @@ static inline int mprotect_exec( void *base, size_t size, int unix_prot )
              * This preserves ADRP-based PC-relative references between sections. */
             ios_jit_scan_nonexec( "pre-memcpy", ios_pe_module_name( image_base, image_size ),
                                   (char *)jit_rx_base + offset, image_size );
-            memcpy((char *)jit_rw_base + offset, image_base, image_size);
+            /* SOSOalqawe12 fork [image-partial]: a kernel copy, not memcpy. When the image is unmapped while
+             * this runs (ONE PIECE Bounty Rush's XIGNCODE3 loader unmaps its own image; logs 2026-10-24
+             * 17:55:28 and 18:02:29: memmove under mprotect_exec read base+0x110000 after [iOS-xrem]
+             * via=section and the thread hung for good), memcpy faulted in host code where the fault
+             * cannot be delivered. mach_vm_read_overwrite reports the hole instead: the request then
+             * fails as a refused copy does (map_image_into_view fails the load), and nothing hangs. */
+            {
+                mach_vm_size_t copied = 0;
+                kern_return_t ckr = mach_vm_read_overwrite( mach_task_self(), (mach_vm_address_t)(uintptr_t)image_base,
+                                                            image_size, (mach_vm_address_t)(uintptr_t)((char *)jit_rw_base + offset),
+                                                            &copied );
+                if (ckr != KERN_SUCCESS || copied != image_size)
+                {
+                    static int copy_failed_n;
+                    if (copy_failed_n++ < 16)
+                        dprintf(2, "[image-partial] pool copy of the image at %p (0x%lx bytes) failed kr=%d after 0x%lx bytes: "
+                                "it is no longer mapped whole; exec request %p+0x%lx refused instead of a host fault\n",
+                                image_base, (unsigned long)image_size, (int)ckr, (unsigned long)copied,
+                                base, (unsigned long)size);
+                    ios_jit_copy_refused = 1;   /* map_image_into_view fails the load */
+                    mprotect( base, size, PROT_READ );
+                    errno = ENOMEM;
+                    return -1;
+                }
+            }
             ios_jit_scan_nonexec( "post-memcpy", ios_pe_module_name( image_base, image_size ),
                                   (char *)jit_rx_base + offset, image_size );
             sys_icache_invalidate((char *)jit_rx_base + offset, image_size);

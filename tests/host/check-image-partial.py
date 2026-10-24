@@ -38,8 +38,13 @@ check('the guard does not read the image for a name', 'ios_pe_module_name' not i
 scan = src.index('image_size = *(unsigned int *)(scan + pe_off + 0x50);')
 outside = src.index('is OUTSIDE nearest image')
 anon = src.index("            if (!image_base || !image_size)\n            {\n                /* iOS-Madeira: anonymous RWX request")
-copy = src.index('memcpy((char *)jit_rw_base + offset, image_base, image_size);')
+copy = src.index('kern_return_t ckr = mach_vm_read_overwrite( mach_task_self(), (mach_vm_address_t)(uintptr_t)image_base,')
 check('order: MZ scan, range check, guard, anonymous path, whole-image copy', scan < outside < guard < anon < copy)
+
+blk = src[copy:src.index('ios_jit_scan_nonexec( "post-memcpy"', copy)]
+check('the whole-image copy is a kernel copy that reports a hole, not memcpy',
+      'memcpy((char *)jit_rw_base + offset, image_base, image_size);' not in src
+      and 'if (ckr != KERN_SUCCESS || copied != image_size)' in blk and 'ios_jit_copy_refused = 1;' in blk and 'return -1;' in blk)
 
 print('PASS' if not failures else 'FAILED: %d' % failures)
 sys.exit(1 if failures else 0)
