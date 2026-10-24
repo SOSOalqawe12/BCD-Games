@@ -329,6 +329,30 @@ import UniformTypeIdentifiers
         ])
     }
 
+    // MARK: Copy settings (SOSOalqawe12 fork)
+
+    /// The source game's file (but its Start with Steam App ID) and its display and performance choices
+    /// go to the target; the target keeps its own name, program, cover and identity.
+    private static func copySettings(from source: LibraryEntry, to target: LibraryEntry) {
+        let from = GameProfile(windowsPath: source.windowsPath), to = GameProfile(windowsPath: target.windowsPath)
+        let keep = to.get(LocalSteamStart.key)
+        var lines = from.text.components(separatedBy: "\n").filter {
+            let line = $0.trimmingCharacters(in: .whitespaces)
+            return !line.hasPrefix(LocalSteamStart.key + " ") && !line.hasPrefix(LocalSteamStart.key + "=")
+                && !line.hasPrefix("# BCD settings for ")
+        }
+        lines.insert("# BCD settings for \(target.windowsPath) (copied from \(source.title))", at: 0)
+        to.text = lines.joined(separator: "\n")
+        if let keep { to.set(LocalSteamStart.key, keep) }
+        var entry = target
+        entry.resolution = source.resolution; entry.display = source.display; entry.fpsMode = source.fpsMode
+        entry.cpuCount = source.cpuCount; entry.anisotropyLimit = source.anisotropyLimit
+        entry.reportNVIDIA = source.reportNVIDIA; entry.metalFXUpscale = source.metalFXUpscale
+        entry.fastSync = source.fastSync; entry.semaphoreFastPath = source.semaphoreFastPath
+        LibraryModel.shared.save(entry)
+        LogStore.shared.log("[copy-settings] \(target.title) took \(source.title)'s settings")
+    }
+
     // MARK: Open in Files (SOSOalqawe12 fork)
 
     /// The Files app at the folder of the game's program (Files' shareddocuments: link to a folder of
@@ -791,6 +815,15 @@ import UniformTypeIdentifiers
         let how: String? = steamGame ? (entry.startsSteamGameDirectly ? "BCD starts this program itself, without Steam."
                                                                        : "Steam's client starts the game from this folder, with its usual launch option.") : nil
         settings.append(BCDGameSetting(id: "path", title: "Program", kind: .info, value: path, note: how))
+        // SOSOalqawe12 fork: another game's settings, copied over this one's in one go.
+        let others = LibraryModel.shared.entries.filter { $0.id != entry.id && $0.desktop != true }
+            .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+        if !others.isEmpty {
+            settings.append(BCDGameSetting(id: "copyfrom", title: "Copy settings from another game",
+                                           kind: .choice(others.prefix(200).map { BCDGameChoice(value: $0.id.uuidString, label: $0.title) }),
+                                           value: "",
+                                           note: "This game takes the other game's display, frame rate, processors, Direct3D, memory, libraries, environment and power settings. Its name, program, cover and Steam App ID stay its own."))
+        }
         // SOSOalqawe12 fork: the game's folder in the Files app, for mods, saves and config files.
         settings.append(BCDGameSetting(id: "openfolder", title: "Open the game's folder in Files", kind: .action,
                                        note: "Shows the folder of the game's program in the Files app, to add mods or change its files."))
@@ -1000,6 +1033,10 @@ import UniformTypeIdentifiers
         case "steam-with":   // SOSOalqawe12 fork: Start with Steam (digits only; empty turns it off)
             let id = value.trimmingCharacters(in: .whitespaces)
             if id.isEmpty || (Int(id).map(MadeiraDock.validAppID) ?? false) { setLine(game, LocalSteamStart.key, id) }
+        case "copyfrom":   // SOSOalqawe12 fork: another game's settings over this one's
+            guard let id = UUID(uuidString: value), let source = LibraryModel.shared.entries.first(where: { $0.id == id }),
+                  let target = entry(for: game) else { return }
+            Self.copySettings(from: source, to: target)
         case "openfolder":   // SOSOalqawe12 fork: the Files app at the game's folder
             if let entry = entry(for: game) { Self.openInFiles(entry) }
         case "steam-with-found":   // SOSOalqawe12 fork: the App ID the game's steam_appid.txt names
