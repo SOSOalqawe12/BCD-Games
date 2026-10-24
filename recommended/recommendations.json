@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "version": 11,
+  "version": 12,
   "generated": "2026-10-24",
   "rules": [
     {
@@ -2681,7 +2681,7 @@
     {
       "id": "one-piece-bounty-rush",
       "title": "ONE PIECE Bounty Rush",
-      "version": 5,
+      "version": 6,
       "match": {
         "steamAppIDs": [2918150],
         "steamFolders": ["one piece bounty rush"]
@@ -2691,10 +2691,7 @@
         "# Reset to Recommended, at the bottom of the game's settings, brings them back.",
         "env.MADEIRA_EC_HOOK_TRACE = 0",
         "env.MADEIRA_DOCK_GAME_SCM = 1",
-        "env.WINEDLLOVERRIDES = video64=",
-        "env.MADEIRA_FILE_TRACE = 1",
-        "env.MADEIRA_FILE_TRACE_LIMIT = 20000",
-        "env.WINEDEBUG = err+all,err-virtual,fixme+all,fixme-d3dcompiler,warn+module,warn+reg,warn+ntdll,trace+loaddll"
+        "env.WINEDLLOVERRIDES = video64="
       ],
       "notes": [
         "SOSOalqawe12 fork, 2026-10-24: Steam starts the game (launch-client-error 0) and no window ever appears. The game",
@@ -2722,7 +2719,9 @@
         "handshake it maps supernova_x64.dll and that module writes through a NULL global (guest rip 0x703801d8a8:",
         "mov rax,[rip+0x4d30a9]; mov [rax+0x7e0],r14) with no failure logged before it. These trace lines say what the",
         "loader and the module open and which Wine stubs they reach, to tell a wrong answer from BCD from the module",
-        "refusing to run. They only log; take them out once the log is in."
+        "refusing to run. They only log; take them out once the log is in.",
+        "Version 6 (log 2026-10-24 22:42:23): the trace found no missing file and no unimplemented call before the",
+        "module's crash; the trace lines are taken out again. The game is not expected to start on BCD."
       ]
     },
     {
