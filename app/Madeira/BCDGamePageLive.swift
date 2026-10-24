@@ -383,7 +383,11 @@ import UniformTypeIdentifiers
     /// BCD's Documents; a folder on an external drive opens at the drive's own path).
     private static func openInFiles(_ entry: LibraryEntry) {
         let folder = String(entry.launchRelativePath.split(separator: "/").dropLast().joined(separator: "/"))
-        let url = ExternalDrives.realURL(forDrivePath: folder) ?? LibraryModel.drive.appendingPathComponent(folder)
+        openURLInFiles(ExternalDrives.realURL(forDrivePath: folder) ?? LibraryModel.drive.appendingPathComponent(folder))
+    }
+
+    /// The Files app at a folder (shareddocuments: link).
+    private static func openURLInFiles(_ url: URL) {
         guard var parts = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return }
         parts.scheme = "shareddocuments"
         guard let link = parts.url else { return }
@@ -900,6 +904,8 @@ import UniformTypeIdentifiers
         // SOSOalqawe12 fork: the game's folder in the Files app, for mods, saves and config files.
         settings.append(BCDGameSetting(id: "openfolder", title: "Open the game's folder in Files", kind: .action,
                                        note: "Shows the folder of the game's program in the Files app, to add mods or change its files."))
+        settings.append(BCDGameSetting(id: "openusers", title: "Open the Windows user folder in Files", kind: .action,
+                                       note: "Where most games keep saves and settings: Documents, Saved Games and AppData of C:\\users."))
         return BCDGameSettingGroup(id: "library", title: "Library", symbol: "books.vertical", settings: settings, headline: entry.title)
     }
 
@@ -1112,6 +1118,8 @@ import UniformTypeIdentifiers
             guard let id = UUID(uuidString: value), let source = LibraryModel.shared.entries.first(where: { $0.id == id }),
                   let target = entry(for: game) else { return }
             Self.copySettings(from: source, to: target)
+        case "openusers":   // SOSOalqawe12 fork: the Files app at C:\users (saves and settings)
+            Self.openURLInFiles(LibraryModel.drive.appendingPathComponent("users", isDirectory: true))
         case "openfolder":   // SOSOalqawe12 fork: the Files app at the game's folder
             if let entry = entry(for: game) { Self.openInFiles(entry) }
         case "steam-with-found":   // SOSOalqawe12 fork: the App ID the game's steam_appid.txt names
