@@ -303,7 +303,7 @@
     {
       "id": "gta5l-steam",
       "title": "GTA V Legacy (Steam)",
-      "version": 3,
+      "version": 50,
       "match": {
         "steamAppIDs": [271590],
         "steamFolders": ["grand theft auto v"],
@@ -344,7 +344,7 @@
         "env.MADEIRA_DEVICE_STATS = 1",
         "env.MADEIRA_METAL_HUD_MAIN = 1"
       ],
-      "smallRAMConfig": ["swap-mb = 3072"],
+      "smallRAMConfig": ["swap-mb = 3072", "swap-mode = 2", "swap-min-mb = 1"],
       "switches": {"avx": false, "nvidia": true, "wineVCRT": false, "fastSync": true, "semaphoreFastPath": true, "fpsMode": 4, "display": "fit"},
       "notes": [
         "GTA V Legacy from Steam (App ID 271590, DirectX 11 through DXMT), being",
@@ -367,7 +367,9 @@
         "session that had the line ended at the Launcher's \"Failed to connect to the Rockstar Games Library Service\"",
         "(builds 574 and 576, logs GBY65K, Y5MEB6, A50T0Q) while the same game connected with it off (8JXT6Q on the same",
         "phone, DGNRT5). The line pins AVX off, so a kept auto-tune line cannot switch it on again (the game's own file wins over",
-        "auto-tune's layer and a key the game's file sets is never proposed). Not tried on a device with a played session after it."
+        "auto-tune's layer and a key the game's file sets is never proposed). Not tried on a device with a played session after it.",
+        "Version 50 (SOSOalqawe12 fork, 2026-10-24): under 12 GB of RAM the 3 GB swap file is broad from 1 MB (swap-mode = 2,",
+        "swap-min-mb = 1), the lines auto-tune's 8 GB rules (swap-8gb-memory-kill, RAPOR-8GB) propose after a memory kill."
       ]
     },
     {

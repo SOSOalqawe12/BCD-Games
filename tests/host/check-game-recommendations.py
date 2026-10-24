@@ -230,9 +230,9 @@ for ident in ('rdr2-steam', 'rdr2-other', 'gta5e-steam'):
 # GTA V Legacy (Steam) v1: the owner's 2026-10-15 lines; DirectX 11, so no D3D12 lines and no DualSense mode.
 legacy = presets['gta5l-steam']
 # v2 (owner, build 547): no vram-mb and no swap-mb in the list; a device under 12 GB gets the 3 GB RAM swap.
-assert legacy['version'] == 3 and legacy['title'] == 'GTA V Legacy (Steam)', legacy   # 3: env.MADEIRA_FEX_AVX = 0
+assert legacy['version'] == 50 and legacy['title'] == 'GTA V Legacy (Steam)', legacy   # 3: env.MADEIRA_FEX_AVX = 0
 assert not any(line.startswith(('vram-mb', 'swap-mb')) for line in legacy['lines']), legacy['lines']
-assert legacy['small'] == ['swap-mb = 3072'], legacy['small']
+assert legacy['small'] == ['swap-mb = 3072', 'swap-mode = 2', 'swap-min-mb = 1'], legacy['small']
 assert 'static var smallRAMDevice: Bool { deviceRAMBytes < 10 << 30 }' in lists_src
 assert [ident for ident, p in presets.items() if p['small']] == ['gta5e-steam', 'gta5l-steam']
 # SOSOalqawe12 fork, v50: GTA V Enhanced on an 8 GB device (iPhone 15 Pro Max) gets HFW's and RDR2's swap lines.
@@ -906,7 +906,7 @@ check(!R.gta5LegacySteam.fileText.contains("swap-mb") && !R.gta5LegacySteam.file
 R.deviceRAMBytes = 16 << 30
 check(R.all.map { $0.fileText } == onTwelve, "a 16 GB iPad: the same lists as a 12 GB phone")
 R.deviceRAMBytes = 7_500 << 20
-check(R.gta5LegacySteam.fileText.hasSuffix("env.MADEIRA_METAL_HUD_MAIN = 1\nswap-mb = 3072\n"),
+check(R.gta5LegacySteam.fileText.hasSuffix("env.MADEIRA_METAL_HUD_MAIN = 1\nswap-mb = 3072\nswap-mode = 2\nswap-min-mb = 1\n"),
       "an 8 GB phone: the 3 GB RAM swap after GTA V Legacy's list")
 // SOSOalqawe12 fork: GTA V Enhanced (Steam) gets its swap lines on an 8 GB phone too.
 let enhanced = R.all.first { $0.id == "gta5e-steam" }!
