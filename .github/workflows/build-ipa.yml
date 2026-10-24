@@ -640,6 +640,10 @@ jobs:
           python3 tests/host/check-launch-routing.py
           python3 tests/host/check-cmd-bundle.py
 
+      # SOSOalqawe12 fork: no whole-image pool copy of a PE header whose image is not mapped to its end.
+      - name: Check partial images in the pool copy
+        run: python3 tests/host/check-image-partial.py
+
       - name: Check JIT pool image placement contracts
         run: |
           python3 tests/host/check-pool-low-images.py

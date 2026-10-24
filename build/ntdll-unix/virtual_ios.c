@@ -17312,6 +17312,45 @@ static int ios_exec_in_place_split( const void *base, size_t size, int unix_prot
 }
 #endif /* WINE_IOS */
 
+#ifdef WINE_IOS
+/* SOSOalqawe12 fork [image-partial]: whether [p, p+len) is mapped from end to end, with no hole,
+ * asked of the kernel region by region (submaps descended, as ios_ml1041_readable_words does).
+ * mprotect_exec copies a whole PE image into the JIT pool from the MZ header its backward scan
+ * found and that header's SizeOfImage. A program that unmaps its own image and maps a smaller
+ * block with a PE header at the old base (ONE PIECE Bounty Rush's XIGNCODE3 loader: header plus
+ * 0x110000 bytes, SizeOfImage 0x1a20000) made that memcpy read past the mapping from host code;
+ * the fault could not be delivered and the thread hung forever ([store-noalias] addr=base+0x110000,
+ * host pc in memmove under mprotect_exec). Protection is not asked: a mapped page the guest made
+ * no-access keeps the old path; only a hole in the range changes it. */
+static int ios_range_fully_mapped( const void *p, size_t len )
+{
+    mach_vm_address_t at = (mach_vm_address_t)(uintptr_t)p;
+    const mach_vm_address_t end = at + len;
+
+    while (at < end)
+    {
+        mach_vm_address_t ra = at;
+        mach_vm_size_t rs = 0;
+        natural_t depth = 0;
+        vm_region_submap_info_data_64_t ri;
+        mach_msg_type_number_t rc;
+
+        for (;;)
+        {
+            rc = VM_REGION_SUBMAP_INFO_COUNT_64;
+            if (mach_vm_region_recurse( mach_task_self(), &ra, &rs, &depth,
+                                        (vm_region_recurse_info_t)&ri, &rc ) != KERN_SUCCESS) return 0;
+            if (!ri.is_submap) break;
+            depth++;
+        }
+        if (ra > at) return 0;                        /* a hole at `at` */
+        if (ra + rs <= at) return 0;                  /* no progress: never loop */
+        at = ra + rs;
+    }
+    return 1;
+}
+#endif /* WINE_IOS */
+
 static inline int mprotect_exec( void *base, size_t size, int unix_prot )
 {
 #ifdef WINE_IOS
@@ -18216,6 +18255,20 @@ static inline int mprotect_exec( void *base, size_t size, int unix_prot )
                         }
                     }
                 }
+                image_base = NULL;
+                image_size = 0;
+            }
+
+            /* SOSOalqawe12 fork [image-partial]: the image the scan found must be mapped with no hole from
+             * its MZ to SizeOfImage before it is copied whole; otherwise the request is an executable block
+             * like any other (the anonymous RWX path below), as on Windows, instead of a host fault. */
+            if (image_base && image_size && !ios_range_fully_mapped( image_base, image_size ))
+            {
+                static int partial_n;
+                if (partial_n++ < 16)
+                    dprintf(2, "[image-partial] PE header at %p (SizeOfImage 0x%lx) is not mapped to its end: exec "
+                            "request %p+0x%lx treated as anonymous RWX instead of a whole-image pool copy\n",
+                            image_base, (unsigned long)image_size, base, (unsigned long)size);
                 image_base = NULL;
                 image_size = 0;
             }
