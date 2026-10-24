@@ -33,6 +33,34 @@ final class StorageModel: ObservableObject {
         }.filter { FileManager.default.fileExists(atPath: $0.path) }
     }
 
+    /// SOSOalqawe12 fork: what is inside each Windows temporary folder (the folders themselves stay,
+    /// programs expect them): C:\windows\temp and every profile's AppData\Local\Temp.
+    static func windowsTemp() -> [URL] {
+        guard let drive = GameLibrary.driveC else { return [] }
+        var folders = [drive.appendingPathComponent("windows/temp", isDirectory: true)]
+        if let names = try? FileManager.default.contentsOfDirectory(atPath: drive.appendingPathComponent("users").path) {
+            folders += names.map { drive.appendingPathComponent("users/\($0)/AppData/Local/Temp", isDirectory: true) }
+        }
+        return children(folders)
+    }
+
+    /// SOSOalqawe12 fork: crash dumps Windows programs leave: Steam's dumps folder and every profile's
+    /// AppData\Local\CrashDumps (the folders stay).
+    static func crashDumps() -> [URL] {
+        guard let drive = GameLibrary.driveC else { return [] }
+        var folders = [drive.appendingPathComponent("Program Files (x86)/Steam/dumps", isDirectory: true)]
+        if let names = try? FileManager.default.contentsOfDirectory(atPath: drive.appendingPathComponent("users").path) {
+            folders += names.map { drive.appendingPathComponent("users/\($0)/AppData/Local/CrashDumps", isDirectory: true) }
+        }
+        return children(folders)
+    }
+
+    private static func children(_ folders: [URL]) -> [URL] {
+        folders.flatMap { folder in
+            ((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []).map { folder.appendingPathComponent($0) }
+        }
+    }
+
     static let items: [StorageItem] = [
         StorageItem(id: "capture", title: "Frame captures",
                     detail: "Written by the overlay's CAP button", deletable: true,
@@ -47,6 +75,12 @@ final class StorageModel: ObservableObject {
         StorageItem(id: "sc11", title: "D3D11 shader cache",
                     detail: "DXMT's compiled shaders", deletable: true,
                     urls: { [StorageModel.documents?.appendingPathComponent("shadercache", isDirectory: true)].compactMap { $0 } }),
+        StorageItem(id: "wintemp", title: "Windows temporary files",
+                    detail: "Left behind by installers and games; clear it while no game runs", deletable: true,
+                    urls: { StorageModel.windowsTemp() }),
+        StorageItem(id: "dumps", title: "Crash dumps",
+                    detail: "Written when a Windows program crashes (Steam's dumps and CrashDumps folders)", deletable: true,
+                    urls: { StorageModel.crashDumps() }),
         StorageItem(id: "drive", title: "Windows drive (C:)",
                     detail: "Games, saves and the Windows files", deletable: false,
                     urls: { [GameLibrary.driveC].compactMap { $0 } }),
