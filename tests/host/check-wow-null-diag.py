@@ -299,44 +299,49 @@ else:
             def run(scn):
                 return subprocess.run([str(d / 'h'), scn], capture_output=True, text=True)
 
-            r = run('batman')
-            lines = [l for l in r.stderr.splitlines() if l.startswith('[wow-null32]')]
-            check('the Batman shape: the first line names the NULL-page address, the registers of the log and the module count',
-                  len(lines) >= 4 and 'rev=ajan7-arkham #1' in lines[0] and 'guest address 0x10c' in lines[0] and 'EBX=0x0' in lines[0] and 'ESI=0x18' in lines[0]
-                  and 'EDI=0x5' in lines[0] and 'EBP=0x1e1b628' in lines[0] and 'ESP=0x14ff0a0' in lines[0] and '(2 modules' in lines[0], r.stderr)
-            check('registers that point into a module are named (EDX = libmono+0x1234)',
-                  any('registers that point into a module:' in l and 'EDX=0x77651234(libmono-2.0-x86.dll+0x1234)' in l and 'EBX' not in l.split('module:')[1] for l in lines), r.stderr)
-            check('the stack: the return address is libmono-2.0-x86.dll+0x2136d9 and the arguments are the three of the log',
-                  any('guest stack from ESP' in l and '+10:778636d9(libmono-2.0-x86.dll+0x2136d9)' in l and '+14:1e1b628' in l and '+18:18' in l and '+1c:5' in l
-                      and '+3c:0' in l for l in lines), r.stderr)
-            check('the TLS cells: the set ones with their value and module+RVA, the unallocated one marked',
-                  any('TEB32=0x302000 PEB32=0x311000 TlsBitmapBits=0x00000000000e0001' in l and '3 cell(s) hold a value:' in l and '[17]=0x1e12430' in l
-                      and '[18]=0x77650000+0x2a0b04' not in l and '[18]=0x77650b04' not in l and '(libmono-2.0-x86.dll+0x2a0b04)' in l
-                      and '[40]=0x1234(NOT allocated)' in l for l in lines), r.stderr)
-            check('the allocated indices whose cell is NULL are listed (0 and 19)',
-                  any('2 allocated index(es) whose cell is NULL in this thread: 0 19' in l for l in lines), r.stderr)
-            check('five lines for one report', len(lines) == 5, r.stderr)
+            # SOSOalqawe12 fork: the scenarios map a fake pool and guest window at fixed addresses; a GitHub-hosted macOS runner can
+            # have them taken ("alloc-failed" before any report). That is the runner, not the diagnostic: skip, as without a compiler.
+            if 'alloc-failed' in run('batman').stdout:
+                print('skip the scenario runs: this host has the fixed test addresses taken (alloc-failed)')
+            else:
+                r = run('batman')
+                lines = [l for l in r.stderr.splitlines() if l.startswith('[wow-null32]')]
+                check('the Batman shape: the first line names the NULL-page address, the registers of the log and the module count',
+                      len(lines) >= 4 and 'rev=ajan7-arkham #1' in lines[0] and 'guest address 0x10c' in lines[0] and 'EBX=0x0' in lines[0] and 'ESI=0x18' in lines[0]
+                      and 'EDI=0x5' in lines[0] and 'EBP=0x1e1b628' in lines[0] and 'ESP=0x14ff0a0' in lines[0] and '(2 modules' in lines[0], r.stderr)
+                check('registers that point into a module are named (EDX = libmono+0x1234)',
+                      any('registers that point into a module:' in l and 'EDX=0x77651234(libmono-2.0-x86.dll+0x1234)' in l and 'EBX' not in l.split('module:')[1] for l in lines), r.stderr)
+                check('the stack: the return address is libmono-2.0-x86.dll+0x2136d9 and the arguments are the three of the log',
+                      any('guest stack from ESP' in l and '+10:778636d9(libmono-2.0-x86.dll+0x2136d9)' in l and '+14:1e1b628' in l and '+18:18' in l and '+1c:5' in l
+                          and '+3c:0' in l for l in lines), r.stderr)
+                check('the TLS cells: the set ones with their value and module+RVA, the unallocated one marked',
+                      any('TEB32=0x302000 PEB32=0x311000 TlsBitmapBits=0x00000000000e0001' in l and '3 cell(s) hold a value:' in l and '[17]=0x1e12430' in l
+                          and '[18]=0x77650000+0x2a0b04' not in l and '[18]=0x77650b04' not in l and '(libmono-2.0-x86.dll+0x2a0b04)' in l
+                          and '[40]=0x1234(NOT allocated)' in l for l in lines), r.stderr)
+                check('the allocated indices whose cell is NULL are listed (0 and 19)',
+                      any('2 allocated index(es) whose cell is NULL in this thread: 0 19' in l for l in lines), r.stderr)
+                check('five lines for one report', len(lines) == 5, r.stderr)
 
-            r = run('repeat')
-            check('the same host pc twice is one report', len([l for l in r.stderr.splitlines() if 'rev=ajan7-arkham #' in l]) == 1, r.stderr)
-            r = run('cap')
-            n = len([l for l in r.stderr.splitlines() if 'rev=ajan7-arkham #' in l])
-            check('distinct pcs: 3 reports, then silence', n == 3, r.stderr)
-            r = run('benign')
-            check('other exception kinds, an address beyond the NULL page, a mismatched x24, a non-window x19, a pc outside the pool and no TEB print nothing',
-                  r.stderr == '' and r.stdout.strip() == 'benign-done', r.stderr + r.stdout)
-            r = run('bus')
-            n = len([l for l in r.stderr.splitlines() if 'rev=ajan7-arkham #' in l])
-            check('build 591, the BSD path: with x24 not holding the address the Mach gate prints nothing, the bus wrapper prints one report, and the '
-                  'strict gate is strict again afterwards; the bus wrapper still wants a 4 GB window base and the NULL page',
-                  n == 1 and 'bus-done' in r.stdout, r.stderr + r.stdout)
-            r = run('noteb')
-            lines = [l for l in r.stderr.splitlines() if l.startswith('[wow-null32]')]
-            check('a TEB32 whose Self does not match: the registers and stack print, the TLS is not read',
-                  any('no TEB32' in l for l in lines) and not any('TlsBitmapBits' in l for l in lines) and any('guest stack from ESP' in l for l in lines), r.stderr)
-            r = run('nostack')
-            lines = [l for l in r.stderr.splitlines() if l.startswith('[wow-null32]')]
-            check('an unreadable stack says so and the TLS still prints', any('is not readable' in l for l in lines) and any('TlsBitmapBits' in l for l in lines), r.stderr)
+                r = run('repeat')
+                check('the same host pc twice is one report', len([l for l in r.stderr.splitlines() if 'rev=ajan7-arkham #' in l]) == 1, r.stderr)
+                r = run('cap')
+                n = len([l for l in r.stderr.splitlines() if 'rev=ajan7-arkham #' in l])
+                check('distinct pcs: 3 reports, then silence', n == 3, r.stderr)
+                r = run('benign')
+                check('other exception kinds, an address beyond the NULL page, a mismatched x24, a non-window x19, a pc outside the pool and no TEB print nothing',
+                      r.stderr == '' and r.stdout.strip() == 'benign-done', r.stderr + r.stdout)
+                r = run('bus')
+                n = len([l for l in r.stderr.splitlines() if 'rev=ajan7-arkham #' in l])
+                check('build 591, the BSD path: with x24 not holding the address the Mach gate prints nothing, the bus wrapper prints one report, and the '
+                      'strict gate is strict again afterwards; the bus wrapper still wants a 4 GB window base and the NULL page',
+                      n == 1 and 'bus-done' in r.stdout, r.stderr + r.stdout)
+                r = run('noteb')
+                lines = [l for l in r.stderr.splitlines() if l.startswith('[wow-null32]')]
+                check('a TEB32 whose Self does not match: the registers and stack print, the TLS is not read',
+                      any('no TEB32' in l for l in lines) and not any('TlsBitmapBits' in l for l in lines) and any('guest stack from ESP' in l for l in lines), r.stderr)
+                r = run('nostack')
+                lines = [l for l in r.stderr.splitlines() if l.startswith('[wow-null32]')]
+                check('an unreadable stack says so and the TLS still prints', any('is not readable' in l for l in lines) and any('TlsBitmapBits' in l for l in lines), r.stderr)
 
 # ---------------------------------------------------------------- the real file still compiles for iOS (when the wine headers exist)
 wine = Path(os.environ.get('WINE_SRC', root / 'wine'))

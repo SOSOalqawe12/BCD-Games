@@ -307,53 +307,60 @@ else:
               kv.get('batman') == '1' and kv.get('a') == 'b4' and kv.get('b') == 'ac', r.stdout)
         check('...and not in zeros', kv.get('none') == '0', r.stdout)
 
-        r = run('lost')
-        lines = [l for l in r.stderr.splitlines() if l.startswith('[x87-int64]')]
-        check('Batman 576: a header, one candidate and a verdict', len(lines) == 3 and r.stdout.strip() == 'done', r.stderr)
-        head = lines[0] if lines else ''
-        check('the header: the guest address, the value, the SLIST decoding, the step and the window of true values',
-              head.startswith('[x87-int64] rev=ajan6-arkham #1 guest read of 0xf080000 at host pc=0x')
-              and 'EDX:EAX = 0x389f00050f080000' in head and 'Next=0xf080000 depth=5 sequence=0x389f' in head
-              and 'doubles are 0x200 apart' in head and '[0xf07ff00, 0xf080100] would have come out as 0xf080000' in head, head)
-        check('the header names where the conversion is', 'SCVTF at pc-0xb4, FCVTZS at pc-0xac' in head, head)
-        cand = lines[1] if len(lines) > 1 else ''
-        check('the candidate head is named by where it was found, with both values and the difference of Next',
-              cand.startswith('[x87-int64]   [ESP+0x10] = 0x16b92a8: its 8 bytes are 0x389f00050f07ff00')
-              and '0x389f00050f080000 = EDX:EAX: LOST, Next 0xf07ff00 -> 0xf080000; the real node 0xf07ff00 is readable (its first 8 bytes 0x0000000000000000)' in cand, cand)
-        check('the verdict is LOST and names the keyed attempt', len(lines) == 3 and 'verdict: LOST' in lines[2] and 'env.FEX_X87REDUCEDPRECISION = 0' in lines[2], r.stderr)
+        # SOSOalqawe12 fork: the scenarios place a fake pool and guest window at fixed addresses (0x301000000, 0x5000000000+); a
+        # GitHub-hosted macOS runner can have them taken, and then the harness stops with "alloc-failed" before any report is
+        # made. That is the runner's address space, not the diagnostic: say so and skip the scenarios, as without a C compiler.
+        probe = run('lost')
+        if 'alloc-failed' in probe.stdout:
+            print('skip the scenario runs: this host has the fixed test addresses taken (alloc-failed)')
+        else:
+            r = run('lost')
+            lines = [l for l in r.stderr.splitlines() if l.startswith('[x87-int64]')]
+            check('Batman 576: a header, one candidate and a verdict', len(lines) == 3 and r.stdout.strip() == 'done', r.stderr)
+            head = lines[0] if lines else ''
+            check('the header: the guest address, the value, the SLIST decoding, the step and the window of true values',
+                  head.startswith('[x87-int64] rev=ajan6-arkham #1 guest read of 0xf080000 at host pc=0x')
+                  and 'EDX:EAX = 0x389f00050f080000' in head and 'Next=0xf080000 depth=5 sequence=0x389f' in head
+                  and 'doubles are 0x200 apart' in head and '[0xf07ff00, 0xf080100] would have come out as 0xf080000' in head, head)
+            check('the header names where the conversion is', 'SCVTF at pc-0xb4, FCVTZS at pc-0xac' in head, head)
+            cand = lines[1] if len(lines) > 1 else ''
+            check('the candidate head is named by where it was found, with both values and the difference of Next',
+                  cand.startswith('[x87-int64]   [ESP+0x10] = 0x16b92a8: its 8 bytes are 0x389f00050f07ff00')
+                  and '0x389f00050f080000 = EDX:EAX: LOST, Next 0xf07ff00 -> 0xf080000; the real node 0xf07ff00 is readable (its first 8 bytes 0x0000000000000000)' in cand, cand)
+            check('the verdict is LOST and names the keyed attempt', len(lines) == 3 and 'verdict: LOST' in lines[2] and 'env.FEX_X87REDUCEDPRECISION = 0' in lines[2], r.stderr)
 
-        r = run('lostreg')
-        lines = [l for l in r.stderr.splitlines() if l.startswith('[x87-int64]')]
-        check('the head pointer in EBX is named EBX (registers are tried before the frame) and found once',
-              len(lines) == 3 and lines[1].startswith('[x87-int64]   EBX = 0x16b92a8: its 8 bytes are 0x389f00050f07ff00'), r.stderr)
-        r = run('exact')
-        lines = [l for l in r.stderr.splitlines() if l.startswith('[x87-int64]')]
-        check('a head that holds EDX:EAX exactly: EXACT, and the line says nothing was lost',
-              len(lines) == 3 and 'its 8 bytes are 0x389f00050f080000 = EDX:EAX exactly; nothing was lost here' in lines[1]
-              and 'verdict: EXACT' in lines[2] and 'LOST' not in r.stderr, r.stderr)
-        r = run('notfound')
-        lines = [l for l in r.stderr.splitlines() if l.startswith('[x87-int64]')]
-        check('a head that neither equals nor rounds to EDX:EAX: no candidate, the not-found verdict',
-              len(lines) == 2 and 'verdict: head not found' in lines[1], r.stderr)
-        r = run('injustice')
-        lines = [l for l in r.stderr.splitlines() if l.startswith('[x87-int64]')]
-        check('Injustice G5HGVV: the negative value, step 0x400, and the window around 0x8cd60000',
-              len(lines) == 3 and 'EDX:EAX = 0x92d500048cd60000' in lines[0] and 'depth=4 sequence=0x92d5' in lines[0]
-              and 'doubles are 0x400 apart' in lines[0] and '[0x8cd5fe00, 0x8cd60200]' in lines[0]
-              and 'LOST, Next 0x8cd60010 -> 0x8cd60000; the real node 0x8cd60010 is not readable either' in lines[1] and 'verdict: LOST' in lines[2], r.stderr)
-        r = run('not32')
-        lines = [l for l in r.stderr.splitlines() if l.startswith('[x87-int64]')]
-        check('a fault that is not a 32-bit window access prints the first line only, without guest values',
-              len(lines) == 1 and 'this is not a 32-bit guest access' in lines[0] and 'EDX:EAX' not in lines[0], r.stderr)
-        r = run('dedupe')
-        n = len([l for l in r.stderr.splitlines() if l.startswith('[x87-int64] rev=')])
-        check('the same host pc twice is one report', n == 1, r.stderr)
-        r = run('cap')
-        n = len([l for l in r.stderr.splitlines() if l.startswith('[x87-int64] rev=')])
-        check('distinct pcs: 3 reports, then silence', n == 3, r.stderr)
-        r = run('benign')
-        check('other exception kinds, a pc outside the pool and code without the conversion print nothing',
-              r.stderr == '' and r.stdout.strip() == 'benign-done', r.stderr + r.stdout)
+            r = run('lostreg')
+            lines = [l for l in r.stderr.splitlines() if l.startswith('[x87-int64]')]
+            check('the head pointer in EBX is named EBX (registers are tried before the frame) and found once',
+                  len(lines) == 3 and lines[1].startswith('[x87-int64]   EBX = 0x16b92a8: its 8 bytes are 0x389f00050f07ff00'), r.stderr)
+            r = run('exact')
+            lines = [l for l in r.stderr.splitlines() if l.startswith('[x87-int64]')]
+            check('a head that holds EDX:EAX exactly: EXACT, and the line says nothing was lost',
+                  len(lines) == 3 and 'its 8 bytes are 0x389f00050f080000 = EDX:EAX exactly; nothing was lost here' in lines[1]
+                  and 'verdict: EXACT' in lines[2] and 'LOST' not in r.stderr, r.stderr)
+            r = run('notfound')
+            lines = [l for l in r.stderr.splitlines() if l.startswith('[x87-int64]')]
+            check('a head that neither equals nor rounds to EDX:EAX: no candidate, the not-found verdict',
+                  len(lines) == 2 and 'verdict: head not found' in lines[1], r.stderr)
+            r = run('injustice')
+            lines = [l for l in r.stderr.splitlines() if l.startswith('[x87-int64]')]
+            check('Injustice G5HGVV: the negative value, step 0x400, and the window around 0x8cd60000',
+                  len(lines) == 3 and 'EDX:EAX = 0x92d500048cd60000' in lines[0] and 'depth=4 sequence=0x92d5' in lines[0]
+                  and 'doubles are 0x400 apart' in lines[0] and '[0x8cd5fe00, 0x8cd60200]' in lines[0]
+                  and 'LOST, Next 0x8cd60010 -> 0x8cd60000; the real node 0x8cd60010 is not readable either' in lines[1] and 'verdict: LOST' in lines[2], r.stderr)
+            r = run('not32')
+            lines = [l for l in r.stderr.splitlines() if l.startswith('[x87-int64]')]
+            check('a fault that is not a 32-bit window access prints the first line only, without guest values',
+                  len(lines) == 1 and 'this is not a 32-bit guest access' in lines[0] and 'EDX:EAX' not in lines[0], r.stderr)
+            r = run('dedupe')
+            n = len([l for l in r.stderr.splitlines() if l.startswith('[x87-int64] rev=')])
+            check('the same host pc twice is one report', n == 1, r.stderr)
+            r = run('cap')
+            n = len([l for l in r.stderr.splitlines() if l.startswith('[x87-int64] rev=')])
+            check('distinct pcs: 3 reports, then silence', n == 3, r.stderr)
+            r = run('benign')
+            check('other exception kinds, a pc outside the pool and code without the conversion print nothing',
+                  r.stderr == '' and r.stdout.strip() == 'benign-done', r.stderr + r.stdout)
 
 # ---------------------------------------------------------------- the real file still compiles for iOS (when the wine headers exist)
 wine = Path(os.environ.get('WINE_SRC', root / 'wine'))
