@@ -295,9 +295,13 @@ gamepad = (app / 'GamepadInput.swift').read_text()
 for flag, where in (('MADEIRA_CONTROL_PRESETS', presets),):
     assert f'.flag("{flag}")' in where, flag + ' is a kill switch'
 # Defaults an existing user would notice are opt-in: the built-in is never applied
-# automatically and player 1 is not reserved unless the switch is set to 1.
-for flag, where in (('MADEIRA_CONTROLS_XBOX_DEFAULT', presets), ('MADEIRA_PAD_EARLY_SLOT', gamepad)):
+# automatically unless the switch is set to 1.
+for flag, where in (('MADEIRA_CONTROLS_XBOX_DEFAULT', presets),):
     assert f'.optIn("{flag}")' in where and f'.flag("{flag}")' not in where, flag + ' is opt-in'
+# SOSOalqawe12 fork: player 1 is reserved at session start by default (the touch controller
+# otherwise reached almost no game); only "0" turns it off.
+assert '.flag("MADEIRA_PAD_EARLY_SLOT")' in gamepad and '.optIn("MADEIRA_PAD_EARLY_SLOT")' not in gamepad, \
+    'MADEIRA_PAD_EARLY_SLOT is on by default'
 assert '!= "0"' in function(gamepad, 'static func flag('), 'only "0" disables'
 assert '== "1"' in function(gamepad, 'static func optIn('), 'only "1" enables'
 assert 'Self.xboxDefault' in function(presets, 'var defaultPending: Bool {'), 'the automatic built-in needs the opt-in'
@@ -319,7 +323,9 @@ window = function(content, 'final class ControlsWindow: UIWindow {')
 assert window.index('if m.editing || m.sessionPanel {') < window.index('!hit.isDescendant(of: root)') \
     < window.index('guard m.hitsInteractive('), 'menu and dialog presentations take their touches in play mode'
 reserve = function(gamepad, '@MainActor func reserveSessionSlot(touchControls: Bool) {')
-assert reserve.index('guard Self.enabled, Self.optIn("MADEIRA_PAD_EARLY_SLOT")') < reserve.index('touchState.reserved = true')
+assert reserve.index('guard Self.enabled, Self.flag("MADEIRA_PAD_EARLY_SLOT")') < reserve.index('touchState.reserved = true')
+assert reserve.index('guard touch || paired else { return }') < reserve.index('touchState.reserved = true'), \
+    'nothing reserved without a controller source'
 run = function(content, 'private func runWineFullSequence(profile: LibraryEntry? = nil) {')
 assert run.index('GamepadInput.shared.reserveSessionSlot(') < run.index('DispatchQueue.global'), 'reserved before Wine starts'
 

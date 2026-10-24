@@ -34,7 +34,7 @@ final class GamepadInput: @unchecked Sendable {
         }
     }
 
-    /// Publish player 1 before the game looks (MADEIRA_PAD_EARLY_SLOT=1; default OFF).
+    /// Publish player 1 before the game looks (MADEIRA_PAD_EARLY_SLOT; default ON, 0 turns it off).
     ///
     /// Some input layers enumerate XInput once at startup and only rescan on a
     /// device-arrival broadcast, which this port does not deliver. Touch slot 0
@@ -45,10 +45,11 @@ final class GamepadInput: @unchecked Sendable {
     /// is connected at rest from the start; live input takes it over. The
     /// reservation lasts until the process exits (one Wine session per run),
     /// so player 1 then shows as connected for the whole session even while no
-    /// controller is in use. That is why it is opt-in: without the switch,
-    /// slot 0 connects only when a real source appears, as before.
+    /// controller is in use. SOSOalqawe12 fork (2026-10-24): on by default, since
+    /// without it the touch controller reached almost no game; a session with
+    /// neither touch controller buttons nor a paired pad still reserves nothing.
     @MainActor func reserveSessionSlot(touchControls: Bool) {
-        guard Self.enabled, Self.optIn("MADEIRA_PAD_EARLY_SLOT") else { return }
+        guard Self.enabled, Self.flag("MADEIRA_PAD_EARLY_SLOT") else { return }
         let touch = touchControls && Self.touchEnabled
         let paired = !GCController.controllers().isEmpty
         guard touch || paired else { return }
