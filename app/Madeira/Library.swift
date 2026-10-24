@@ -1064,6 +1064,12 @@ final class LibraryModel: ObservableObject {
         // controls on with an empty overlay and use the touches as the mouse. It comes only when the player turns touch
         // controls on in the in-game menu (BCDTouchLive.setVisible), an explicit request for controls.
         ControlPresetsModel.shared.sessionBegan()
+        // SOSOalqawe12 fork: env.MADEIRA_TOUCH_SESSION_DEFAULT (on unless 0): touch controls on with nothing on screen
+        // get the built-in that suits the game now, before Wine starts and the game enumerates XInput.
+        if ControlPresetsModel.sessionDefault && controls.visible && controls.controls.isEmpty {
+            ControlPresetsModel.shared.applyGameDefault(steam: entry.steamAppID != nil || entry.id == LibraryEntry.dockSessionID,
+                                                        reason: "session-start")
+        }
         controllerBinds = GamepadInput.keyboardMouseAvailable ? (entry.controllerBinds ?? [:]) : [:]
         padMouseVertical = GamepadInput.keyboardMouseAvailable ? (entry.padMouseVertical ?? 1) : 1
         controllerMode = GamepadInput.keyboardMouseAvailable ? entry.controllerMode : nil

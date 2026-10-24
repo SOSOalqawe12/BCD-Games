@@ -360,8 +360,12 @@ assert 'ControlPresetLayout.defaultID(steam: steam, touchPad: Self.touchPad)' in
 assert '[touch] default layout=' in apply and 'MADEIRA_TOUCH_GAME_DEFAULT=0' in apply, 'every decision is logged'
 # 578 (lead): no default at session start (an empty overlay with touch controls on may be the player's touch-as-mouse
 # setup); only turning touch controls on in the in-game menu fills an empty overlay.
-assert 'applyGameDefault(' not in begin and 'ControlPresetsModel.shared.sessionBegan()' in begin, \
-    'a session never puts a default layout on screen by itself'
+# SOSOalqawe12 fork: on by default (env.MADEIRA_TOUCH_SESSION_DEFAULT, only "0" restores the 578 behaviour), the session fills an
+# empty overlay at its start, after sessionBegan and only through applyGameDefault (which never replaces controls or a layout).
+assert 'ControlPresetsModel.shared.sessionBegan()' in begin and \
+    begin.index('ControlPresetsModel.shared.sessionBegan()') < begin.index('if ControlPresetsModel.sessionDefault && controls.visible && controls.controls.isEmpty {') \
+    < begin.index('ControlPresetsModel.shared.applyGameDefault('), 'a session fills an empty overlay only behind its switch'
+assert 'static let sessionDefault = GamepadInput.flag("MADEIRA_TOUCH_SESSION_DEFAULT")' in presets, 'the session default is on, with a kill switch at 0'
 live = (app / 'BCDTouchLive.swift').read_text()
 set_visible = function(live, 'func setVisible(_ on: Bool) {')
 assert 'presets.applyGameDefault(' in set_visible and 'if on, let entry = library.activeEntry, inLibrarySession' in set_visible \

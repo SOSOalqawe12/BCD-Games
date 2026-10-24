@@ -432,6 +432,10 @@ final class ControlPresetsModel: ObservableObject {
     /// A library game whose touch controls are on with nothing on screen gets a built-in layout for its kind
     /// (applyGameDefault). Only "0" turns it off.
     static let gameDefault = GamepadInput.flag("MADEIRA_TOUCH_GAME_DEFAULT")
+    /// SOSOalqawe12 fork: a library session that starts with touch controls on and nothing on screen gets that
+    /// built-in at once (Library.begin), so the controller is there before the game looks for one. Only "0" turns
+    /// it off (the 578 behaviour: an empty overlay, the touches as the mouse, until touch controls are turned on).
+    static let sessionDefault = GamepadInput.flag("MADEIRA_TOUCH_SESSION_DEFAULT")
 
     @Published private(set) var store = ControlPresetStore()
     /// A file that exists and cannot be read is left untouched: saving is
