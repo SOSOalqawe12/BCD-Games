@@ -554,6 +554,8 @@ import UniformTypeIdentifiers
         var settings = [
             BCDGameSetting(id: "dll.add", title: "Add a DLL", kind: .text(prompt: "winmm or winmm.dll"), value: "",
                            note: "Type a DLL's name to add it as Native. Pick its row below to make it Built-in or Disabled. Applies at the game's next start."),
+            BCDGameSetting(id: "dll.mods", title: "Load the game's mod loaders", kind: .action,
+                           note: "Sets the mod loader DLLs in the game's folder to Native (dinput8, version, winmm, dsound, dxgi, d3d9, d3d11, xinput1_3, wininet: ASI loaders, ReShade, ENB), so the game's copies load instead of Windows'."),
         ]
         for item in list {
             settings.append(BCDGameSetting(id: "dll." + item.name, title: item.name + ".dll", kind: .choice(Self.dllChoices),
@@ -574,6 +576,17 @@ import UniformTypeIdentifiers
                                    headline: headline)
     }
 
+    /// DLL names mod loaders use (ASI loaders, ReShade, Ultimate ASI Loader, ENB).
+    private static let modLoaderNames = ["dinput8", "version", "winmm", "dsound", "dxgi", "d3d9", "d3d11", "xinput1_3", "wininet"]
+
+    /// Those of them the folder of the game's program holds.
+    private static func modLoaderDLLs(_ entry: LibraryEntry) -> [String] {
+        let folder = String(entry.launchRelativePath.split(separator: "/").dropLast().joined(separator: "/"))
+        let url = ExternalDrives.realURL(forDrivePath: folder) ?? LibraryModel.drive.appendingPathComponent(folder)
+        let files = Set(((try? FileManager.default.contentsOfDirectory(atPath: url.path)) ?? []).map { $0.lowercased() })
+        return modLoaderNames.filter { files.contains($0 + ".dll") }
+    }
+
     /// "dll.add" adds a name as Native; "dll.<name>" sets its mode or removes it.
     private func setDll(_ game: BCDGame, _ setting: String, _ value: String) {
         guard let entry = entry(for: game) else { return }
@@ -582,6 +595,18 @@ import UniformTypeIdentifiers
         if setting == "dll.add" {
             guard let name = DllOverrides.normalized(value), name != "add", !list.contains(where: { $0.name == name }) else { return }
             list.append(DllOverrides.Entry(name: name, mode: .native))
+        } else if setting == "dll.mods" {
+            // SOSOalqawe12 fork: the mod loaders' DLLs the game's folder holds, as Native.
+            let found = Self.modLoaderDLLs(entry)
+            guard !found.isEmpty else {
+                LogStore.shared.log("[dll-overrides] mod loaders: none of \(Self.modLoaderNames.joined(separator: ", ")) in the game's folder")
+                return
+            }
+            for name in found {
+                if let i = list.firstIndex(where: { $0.name == name }) { list[i].mode = .native }
+                else { list.append(DllOverrides.Entry(name: name, mode: .native)) }
+            }
+            LogStore.shared.log("[dll-overrides] mod loaders native: \(found.joined(separator: ", "))")
         } else {
             let name = String(setting.dropFirst(4))
             guard let i = list.firstIndex(where: { $0.name == name }) else { return }
