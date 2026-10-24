@@ -683,8 +683,20 @@ final class LibraryModel: ObservableObject {
             return "The game quit because a Windows file it needs is missing: \(missing.dll) (needed by \(missing.by)). If the game ships that file, check that its folder was copied completely. Otherwise press Play again: BCD switches on the Windows files it can add, and auto-tune tries again. To report the problem, export the diagnostic log."
         }
         let kind = status == 0xC0000005 ? " (access violation)" : status == 0xC0000017 ? " (not enough memory)" : status == 0xC0000135 ? " (a DLL is missing)" : ""
-        return "The game quit with Windows error 0x\(String(status, radix: 16, uppercase: true))\(kind). To report the problem, export the diagnostic log."
+        // SOSOalqawe12 fork: a Steam copy started on its own says so in its log; Start with Steam is the way.
+        let steam = Self.logSays(LogStore.shared.logFileURL, "SteamAPI_Init() failed")
+            ? " The game's log says Steam wasn't running: for a Steam copy, set its App ID in Options › Start with Steam." : ""
+        return "The game quit with Windows error 0x\(String(status, radix: 16, uppercase: true))\(kind).\(steam) To report the problem, export the diagnostic log."
     }
+    /// Whether the log's last 4 MB hold `text`.
+    static func logSays(_ log: URL, _ text: String) -> Bool {
+        guard let h = try? FileHandle(forReadingFrom: log) else { return false }
+        defer { try? h.close() }
+        let size = (try? h.seekToEnd()) ?? 0
+        guard (try? h.seek(toOffset: size > 4 << 20 ? size - (4 << 20) : 0)) != nil, let data = try? h.readToEnd() else { return false }
+        return data.range(of: Data(text.utf8)) != nil
+    }
+
     /// The last "import_dll Library X (which is needed by Y) not found" of the log's last 4 MB: the DLL and
     /// the file that needed it (its name only, no folder).
     static func missingDLL(_ log: URL) -> (dll: String, by: String)? {
