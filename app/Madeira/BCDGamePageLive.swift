@@ -121,6 +121,7 @@ import UniformTypeIdentifiers
             if let id { d.groups.append(steamGroup(entry, id)) }
             if let dlc = dlcGroup(game) { d.groups.append(dlc) }
             if !desktop { d.groups.append(libraryGroup(entry, gog: game.store == .gog || game.store == .epic)) }
+            d.groups.append(libraries(profile))   // SOSOalqawe12 fork: Libraries override
         }
         if let id {
             let installed = SteamGamesModel.shared.games.first { $0.id == id }
@@ -284,6 +285,58 @@ import UniformTypeIdentifiers
             Self.toggle("nvidia", "Show the game an NVIDIA card", LibraryPrefs.nvidia(entry.windowsPath),
                         note: "For games that stop with \"no graphics card\" or \"failed to get GPU driver info\": Windows then reports an NVIDIA card and driver."),
         ])
+    }
+
+    // MARK: Libraries override (SOSOalqawe12 fork)
+
+    private static var dllChoices: [BCDGameChoice] { [
+        BCDGameChoice(value: DllOverrides.Mode.native.rawValue, label: "Native: the game's own file, then Wine's"),
+        BCDGameChoice(value: DllOverrides.Mode.builtin.rawValue, label: "Built-in: Wine's own"),
+        BCDGameChoice(value: DllOverrides.Mode.disabled.rawValue, label: "Disabled: not loaded"),
+        BCDGameChoice(value: "remove", label: "Remove from this list"),
+    ] }
+
+    /// The game's DLL overrides (DllOverrides, GameProfiles.swift): a row to add one, then a row each.
+    private func libraries(_ profile: GameProfile) -> BCDGameSettingGroup {
+        let list = DllOverrides.entries(profile)
+        var settings = [
+            BCDGameSetting(id: "dll.add", title: "Add a DLL", kind: .text(prompt: "winmm or winmm.dll"), value: "",
+                           note: "Type a DLL's name to add it as Native. Pick its row below to make it Built-in or Disabled. Applies at the game's next start."),
+        ]
+        for item in list {
+            settings.append(BCDGameSetting(id: "dll." + item.name, title: item.name + ".dll", kind: .choice(Self.dllChoices),
+                                           value: item.mode.rawValue, defaultValue: item.mode.rawValue,
+                                           heading: item == list.first ? "Overrides" : nil))
+        }
+        let said: [String] = list.map { item in
+            switch item.mode {
+            case .native: return item.name + ": native"
+            case .builtin: return item.name + ": built-in"
+            case .disabled: return item.name + ": off"
+            }
+        }
+        var headline = said.isEmpty ? "None" : said.prefix(2).joined(separator: " · ")
+        if said.count > 2 { headline += " · \(said.count - 2) more" }
+        return BCDGameSettingGroup(id: "libraries", title: "Libraries override", symbol: "shippingbox", settings: settings,
+                                   note: "Native loads the DLL in the game's folder first. Built-in makes BCD refuse a 64-bit copy in the game's folder so Wine's own loads (32-bit games keep their copy). Disabled stops it loading. These win over the game's recommended lines; Reset to Recommended clears them.",
+                                   headline: headline)
+    }
+
+    /// "dll.add" adds a name as Native; "dll.<name>" sets its mode or removes it.
+    private func setDll(_ game: BCDGame, _ setting: String, _ value: String) {
+        guard let entry = entry(for: game) else { return }
+        let profile = GameProfile(windowsPath: entry.windowsPath)
+        var list = DllOverrides.entries(profile)
+        if setting == "dll.add" {
+            guard let name = DllOverrides.normalized(value), name != "add", !list.contains(where: { $0.name == name }) else { return }
+            list.append(DllOverrides.Entry(name: name, mode: .native))
+        } else {
+            let name = String(setting.dropFirst(4))
+            guard let i = list.firstIndex(where: { $0.name == name }) else { return }
+            if value == "remove" { list.remove(at: i) } else if let mode = DllOverrides.Mode(rawValue: value) { list[i].mode = mode }
+        }
+        DllOverrides.save(list, to: profile)
+        if !LibraryModel.shared.entries.contains(where: { $0.id == entry.id }) { LibraryModel.shared.save(entry) }
     }
 
     // MARK: Compatibility
@@ -835,6 +888,7 @@ import UniformTypeIdentifiers
             guard !name.isEmpty else { return }
             change(game) { $0.title = name }
         case "storeart": change(game) { $0.coverFile = nil }
+        case _ where setting.hasPrefix("dll."): setDll(game, setting, value)
         default:
             break
         }

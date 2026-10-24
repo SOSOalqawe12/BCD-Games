@@ -1692,6 +1692,47 @@ static void *wine_process_thread(void *arg) {
                     LOG("game config env: %{public}s=%{public}s", k.UTF8String, v.UTF8String);
                     fprintf(stderr, "[madeira-env] game %s=%s\n", k.UTF8String, v.UTF8String);
                 }
+                {   /* SOSOalqawe12 fork: Libraries override (DllOverrides, GameProfiles.swift). The game's
+                     * `dll-overrides = winmm=n,b;d3d9=b;foo=` line goes after WINEDLLOVERRIDES as the
+                     * env lines left it, so its entries win (Wine's loadorder keeps the last one per
+                     * name). BCD's loader keeps whatever file it finds, so a Built-in ("b") DLL is
+                     * also named in MADEIRA_APP_DLL_SHADOW, which refuses a 64-bit copy in the game's
+                     * folder and lets the system's load. */
+                    NSString *dllLine = nil;
+                    for (NSString *raw in [gtext componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]]) {
+                        NSString *line = [raw stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+                        NSRange eq = [line rangeOfString:@"="];
+                        if ([line hasPrefix:@"#"] || eq.location == NSNotFound) continue;
+                        NSString *k = [[line substringToIndex:eq.location] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+                        if (![k isEqualToString:@"dll-overrides"]) continue;
+                        dllLine = [[line substringFromIndex:eq.location + 1] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+                    }
+                    if (dllLine.length) {
+                        const char *cur = getenv("WINEDLLOVERRIDES");
+                        NSString *merged = (cur && *cur) ? [NSString stringWithFormat:@"%s;%@", cur, dllLine] : dllLine;
+                        setenv("WINEDLLOVERRIDES", merged.UTF8String, 1);
+                        fprintf(stderr, "[dll-overrides] game %s -> WINEDLLOVERRIDES=%s\n", dllLine.UTF8String, merged.UTF8String);
+                        NSMutableArray<NSString *> *shadow = [NSMutableArray array];
+                        for (NSString *part in [dllLine componentsSeparatedByString:@";"]) {
+                            NSRange eq = [part rangeOfString:@"="];
+                            if (eq.location == NSNotFound) continue;
+                            NSString *order = [[[part substringFromIndex:eq.location + 1] stringByReplacingOccurrencesOfString:@" " withString:@""] lowercaseString];
+                            if (![order isEqualToString:@"b"] && ![order isEqualToString:@"b,n"]) continue;
+                            for (NSString *rawName in [[part substringToIndex:eq.location] componentsSeparatedByString:@","]) {
+                                NSString *name = [[rawName stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]] lowercaseString];
+                                if (!name.length) continue;
+                                [shadow addObject:[name hasSuffix:@".dll"] ? name : [name stringByAppendingString:@".dll"]];
+                            }
+                        }
+                        if (shadow.count) {
+                            const char *old = getenv("MADEIRA_APP_DLL_SHADOW");
+                            NSString *list = [shadow componentsJoinedByString:@";"];
+                            NSString *all = (old && *old) ? [NSString stringWithFormat:@"%s;%@", old, list] : list;
+                            setenv("MADEIRA_APP_DLL_SHADOW", all.UTF8String, 1);
+                            fprintf(stderr, "[dll-overrides] built-in -> MADEIRA_APP_DLL_SHADOW=%s\n", all.UTF8String);
+                        }
+                    }
+                }
                 {   /* madeira-bcd: for the wineserver (g_madeira_srv_fgetpath) */
                     const char *fp = getenv("MADEIRA_SRV_FGETPATH");
                     g_madeira_srv_fgetpath = (fp && fp[0] == '1') ? 1 : 0;

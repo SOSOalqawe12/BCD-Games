@@ -179,3 +179,80 @@ struct GameConfigEditor: View {
         .onAppear { text = profile.text }
     }
 }
+
+// MARK: - Libraries override (SOSOalqawe12 fork)
+
+/// A game's DLL overrides, kept in its own file as one line in WINEDLLOVERRIDES' syntax:
+/// `dll-overrides = winmm=n,b;d3d9=b;steam_api64=`. WineProcessBridge appends it to
+/// WINEDLLOVERRIDES at launch (after the game's env lines, so it wins) and names the
+/// Built-in ones in MADEIRA_APP_DLL_SHADOW: BCD's loader always keeps the file it finds,
+/// so a DLL in the game's folder is refused there for the system's own to load.
+enum DllOverrides {
+    static let key = "dll-overrides"
+
+    enum Mode: String, CaseIterable {
+        /// The game's own file first, then Wine's ("n,b").
+        case native
+        /// Wine's own DLL, not the game's copy ("b").
+        case builtin
+        /// Not loaded at all ("").
+        case disabled
+
+        /// The order as WINEDLLOVERRIDES writes it.
+        var order: String {
+            switch self {
+            case .native: return "n,b"
+            case .builtin: return "b"
+            case .disabled: return ""
+            }
+        }
+
+        init?(order: String) {
+            switch order.replacingOccurrences(of: " ", with: "").lowercased() {
+            case "n", "n,b": self = .native
+            case "b", "b,n": self = .builtin
+            case "", "d": self = .disabled
+            default: return nil
+            }
+        }
+    }
+
+    struct Entry: Equatable {
+        var name: String
+        var mode: Mode
+    }
+
+    /// "WinMM.dll " -> "winmm"; nil for a name that is not a plain file name.
+    static func normalized(_ name: String) -> String? {
+        var n = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if n.hasSuffix(".dll") { n.removeLast(4) }
+        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyz0123456789_-.")
+        guard !n.isEmpty, n.count <= 64, n.unicodeScalars.allSatisfy(allowed.contains) else { return nil }
+        return n
+    }
+
+    /// The line's entries in order; a name listed twice keeps its last mode at its first place.
+    static func parse(_ text: String) -> [Entry] {
+        var out: [Entry] = []
+        for part in text.split(separator: ";") {
+            guard let eq = part.firstIndex(of: "=") else { continue }
+            guard let mode = Mode(order: String(part[part.index(after: eq)...])) else { continue }
+            for raw in part[..<eq].split(separator: ",") {
+                guard let name = normalized(String(raw)) else { continue }
+                if let i = out.firstIndex(where: { $0.name == name }) { out[i].mode = mode } else { out.append(Entry(name: name, mode: mode)) }
+            }
+        }
+        return out
+    }
+
+    static func format(_ entries: [Entry]) -> String {
+        entries.map { "\($0.name)=\($0.mode.order)" }.joined(separator: ";")
+    }
+
+    static func entries(_ profile: GameProfile) -> [Entry] { parse(profile.get(key) ?? "") }
+
+    static func save(_ entries: [Entry], to profile: GameProfile) {
+        let line = format(entries)
+        if (profile.get(key) ?? "") != line { profile.set(key, line.isEmpty ? nil : line) }
+    }
+}
