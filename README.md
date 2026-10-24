@@ -178,6 +178,32 @@ BCD's packages carry no Microsoft software. The Visual C++ runtime most games ne
 downloaded from Microsoft inside the app, after you accept Microsoft's license terms, and
 kept unchanged on your device. Wine Mono comes from WineHQ the same way.
 
+## This fork (SOSOalqawe12/BCD-Games)
+
+A copy of BCD with these changes on top. None of them has been tried on a device yet; a log
+from **Export diagnostic log** helps more than anything when something does not work.
+
+- **Game settings › Libraries override:** add a DLL by name and make it *Native* (the game's
+  own file first), *Built-in* (Wine's own; 64-bit DLLs only, BCD's loader keeps a 32-bit copy
+  in the game's folder) or *Disabled*. Stored as `dll-overrides` in the game's config and
+  merged into `WINEDLLOVERRIDES` at launch (`[dll-overrides]` in the log).
+- **Game settings › Memory:** the swap file (off to 8 GB), what goes into it (broad), the video
+  memory the game sees and "report memory left before the limit", per game.
+- **Game settings › Environment variables:** add, edit or remove `env.NAME = value` lines.
+- **"Please disable Mandatory ASLR":** Wine's `GetProcessMitigationPolicy` returned success
+  without writing its answer. 32-bit games get the fix always; a 64-bit game gets it with
+  **Compatibility › Fix "disable Mandatory ASLR"** (`env.MADEIRA_ASLR_FIX = 1`).
+- **Controllers:** player 1 is connected before the game looks for a controller
+  (`env.MADEIRA_PAD_EARLY_SLOT`, `0` turns it off), and a game that starts with touch controls
+  on and nothing on screen gets its built-in layout (`env.MADEIRA_TOUCH_SESSION_DEFAULT`, `0`
+  turns it off).
+- **8 GB devices:** GTA V Enhanced gets an 8 GB broad swap file and a 3 GB video memory budget;
+  GTA V Legacy's 3 GB swap file is broad.
+- **ONE PIECE Bounty Rush:** Wine's service manager runs in its session, and BCD no longer
+  hangs when its anti-cheat loader maps a partial image at its old base (`[image-partial]`).
+- **Builds:** the workflow runs here and keeps the unsigned IPA as the run's artifact
+  (Actions › the run › Artifacts). Install it with SideStore, AltStore or LiveContainer.
+
 ## Building
 
 The build is the workflow [.github/workflows/build-ipa.yml](.github/workflows/build-ipa.yml)
