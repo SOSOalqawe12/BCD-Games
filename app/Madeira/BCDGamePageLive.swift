@@ -123,6 +123,7 @@ import UniformTypeIdentifiers
             if let dlc = dlcGroup(game) { d.groups.append(dlc) }
             if !desktop { d.groups.append(libraryGroup(entry, gog: game.store == .gog || game.store == .epic)) }
             if id == nil && !desktop { d.groups.append(withSteam(entry, profile)) }   // SOSOalqawe12 fork: Start with Steam
+            d.groups.append(powerSound(profile))  // SOSOalqawe12 fork: Power, sound and logs
             d.groups.append(memory(profile))      // SOSOalqawe12 fork: Memory
             d.groups.append(libraries(profile))   // SOSOalqawe12 fork: Libraries override
             d.groups.append(environment(profile)) // SOSOalqawe12 fork: Environment variables
@@ -341,6 +342,43 @@ import UniformTypeIdentifiers
         UIApplication.shared.open(link) { opened in
             if !opened { LogStore.shared.log("[open-folder] Files did not open the game's folder") }
         }
+    }
+
+    // MARK: Power, sound and logs (SOSOalqawe12 fork)
+
+    /// A choice that is an env.NAME line of the game's own file; its id is "envline.NAME" (set() writes it).
+    private static func envLine(_ key: String, _ title: String, _ profile: GameProfile, _ labels: [(String, String)],
+                                note: String) -> BCDGameSetting {
+        var setting = line(key, title, profile, labels, note: note)   // key: "env.NAME"
+        setting.id = "envline." + key.dropFirst("env.".count)
+        return setting
+    }
+
+    /// The engine's per-session switches for frame pacing, power, sound, touch and the log, each a line
+    /// of the game's own file read when the game starts.
+    private func powerSound(_ profile: GameProfile) -> BCDGameSettingGroup {
+        BCDGameSettingGroup(id: "power-sound", title: "Power, sound and logs", symbol: "bolt.batteryblock", settings: [
+            Self.envLine("env.MADEIRA_FPS_CAP", "Exact frame cap", profile,
+                         [("", "Off"), ("20", "20 FPS"), ("24", "24 FPS"), ("25", "25 FPS"), ("30", "30 FPS"), ("36", "36 FPS"),
+                          ("45", "45 FPS"), ("48", "48 FPS"), ("50", "50 FPS")],
+                         note: "Frames start at most this many times a second, for any number the frame-rate limit doesn't offer. Steadier pacing and less heat; the lower of this and the frame-rate limit applies."),
+            Self.envLine("env.MADEIRA_FPS_GOV_MW", "Battery saver (CPU power budget)", profile,
+                         [("", "Off"), ("2000", "2 W: longest battery"), ("3000", "3 W"), ("4000", "4 W: balanced"), ("5000", "5 W")],
+                         note: "Holds the game's CPU power near this budget by moving a frame cap between 60, 40, 30, 24 and 20 FPS. Cooler phone and longer play on battery; heavy scenes run at a lower frame rate. Ignored while an exact frame cap is set."),
+            Self.envLine("env.MADEIRA_AUDIO_RESUME", "Sound after calls and Siri", profile, [("", "Stays off (as before)"), ("1", "Comes back")],
+                         note: "After a phone call, Siri, an alarm or another app's sound, BCD turns the game's sound back on instead of leaving it silent until the game restarts."),
+            Self.envLine("env.MADEIRA_AUDIO_LEAD_MS", "Audio buffer", profile,
+                         [("", "Default (60 ms)"), ("30", "30 ms: less delay"), ("120", "120 ms: fewer crackles"), ("250", "250 ms: smoothest")],
+                         note: "How much sound is kept ready. Raise it when the sound crackles or stutters in heavy scenes; lower it when sound lags behind the picture."),
+            Self.envLine("env.MADEIRA_AUDIO_SPATIAL", "Spatial audio", profile, [("", "On (Windows' spatial sound)"), ("0", "Off: plain stereo")],
+                         note: "Off makes the game use a plain stereo stream. Try it when a game has no sound or crackles from the start."),
+            Self.envLine("env.MADEIRA_TOUCH_MOUSE", "Touches as a mouse", profile,
+                         [("", "Except where touch controls are shown"), ("1", "Always"), ("0", "Never")],
+                         note: "Whether touching the game view moves and clicks the mouse. Never keeps stray taps out of a game you play with a controller."),
+            Self.envLine("env.WINEDEBUG", "Detailed log", profile,
+                         [("", "Off"), ("err+all,fixme+all,warn+module,warn+file,trace+loaddll", "On: more lines to send for help")],
+                         note: "Writes what Windows programs load and what Wine doesn't support yet into the game's log, for a log you send to get a game working. Logs get bigger and the game can run a little slower; turn it off again after."),
+        ], note: "Each is read when the game starts.")
     }
 
     // MARK: Start with Steam (SOSOalqawe12 fork)
@@ -931,6 +969,11 @@ import UniformTypeIdentifiers
     func set(_ setting: String, to value: String, for game: BCDGame) {
         if dlcSet(setting, to: value, for: game) { return }
         let on = value == "1"
+        // SOSOalqawe12 fork: Power, sound and logs: "envline.NAME" is the game's env.NAME line.
+        if setting.hasPrefix("envline.") {
+            setLine(game, "env." + setting.dropFirst("envline.".count), value)
+            return
+        }
         switch setting {
         case "resolution": change(game) { $0.resolution = value }
         case "scaling": change(game) { $0.display = value }
