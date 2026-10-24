@@ -19,7 +19,8 @@ reports launch-game-running when the program started and launch-game-ended when
 it exited, keeps reading the client's callbacks meanwhile, and restores the
 discovery values afterwards, as after a LaunchApp start. The game's own Steam
 API then finds the signed-in client; its DRM and licence checks are untouched.
-Without the variable nothing changes.
+A program that only starts the game (a launcher) keeps the session while a process MADEIRA_DOCK_KEEP_ALIVE
+names runs (with tools/patch-dock-keep-alive.py applied first). Without the variable nothing changes.
 
 Usage: patch-dock-local-game.py madeira-dock/src/launch.c (idempotent)
 """
@@ -83,11 +84,31 @@ static int run_local_game(const struct sh_api *api, const struct sh_observer *o,
     GetExitCodeProcess(pi.hProcess, &code);
     CloseHandle(pi.hProcess);
     o->event("local-game-exit-code", (int32_t)code);
-    o->event("launch-game-ended", 1);
+KEEP_ALIVE_WAIT    o->event("launch-game-ended", 1);
     return 0;
 }
 
 '''
+# A program that starts the game and exits (a launcher, PlayGTAV.exe) must not end the session while the
+# game it started runs: with tools/patch-dock-keep-alive.py applied first, the wait goes on while a process
+# of MADEIRA_DOCK_KEEP_ALIVE runs, and ends 3 s after the last one, as after a LaunchApp start.
+keep = '''    if (keep_alive_running()) {
+        o->event("launch-keep-alive", 1);
+        uint64_t gone = 0;
+        while (!InterlockedCompareExchange(&interrupted, 0, 0)) {
+            for (unsigned batch = 0; batch < 64; ++batch) {
+                struct sh_callback cb = {0};
+                if (!api->get_callback(pipe, &cb)) break;
+                api->free_callback(pipe);
+            }
+            if (keep_alive_running()) gone = 0;
+            else if (!gone) gone = o->now_ms();
+            else if (o->now_ms() - gone >= 3000) break;
+            o->sleep_ms(250);
+        }
+    }
+'''
+helper = helper.replace("KEEP_ALIVE_WAIT", keep if "static bool keep_alive_running(void)" in src else "")
 src = replace_once(src, anchor_fn, helper + anchor_fn, "sh_launch")
 
 # 2. The install-folder check is for a Steam install; a game of your own has none.

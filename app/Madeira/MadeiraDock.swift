@@ -663,6 +663,19 @@ enum LocalSteamStart {
         return nil
     }
 
+    /// The .exe names in the folder of the game's program (the list stays under the host's 1024 characters).
+    static func programNames(_ entry: LibraryEntry) -> [String] {
+        let folderPath = entry.launchRelativePath.split(separator: "/").dropLast().joined(separator: "/")
+        let folder = ExternalDrives.realURL(forDrivePath: folderPath) ?? LibraryModel.drive.appendingPathComponent(folderPath)
+        var names: [String] = [], length = 0
+        for name in ((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []).sorted()
+        where name.lowercased().hasSuffix(".exe") && !name.contains(";") {
+            guard length + name.count + 1 < 1000 else { break }
+            names.append(name); length += name.count + 1
+        }
+        return names
+    }
+
     /// The Dock start's game: its App ID and name; it has no Steam library or install folder.
     static func game(_ entry: LibraryEntry, appID: Int) -> DockGame {
         DockGame(id: appID, name: entry.title, installDir: "", library: "", installed: true, customExecutables: false)
@@ -684,6 +697,15 @@ enum LocalSteamStart {
         }
         setenv("MADEIRA_STEAM_HOST_LOCAL_EXE", entry.launchWindowsPath, 1)
         setenv("MADEIRA_STEAM_HOST_LOCAL_ARGS", entry.programArguments, 1)
+        // A game of your own has no Steam-game settings: launchers want Windows' service manager (GTA V's
+        // Rockstar service, RPC error 1722 without it), and a program that starts the game and exits must not
+        // end the session, so the folder's programs keep it. The game's own lines (applied later) win.
+        let profile = GameProfile(windowsPath: entry.windowsPath)
+        if profile.get("env.MADEIRA_DOCK_GAME_SCM") == nil { setenv("MADEIRA_DOCK_GAME_SCM", "1", 1) }
+        if profile.get("env.MADEIRA_DOCK_KEEP_ALIVE") == nil {
+            let keep = programNames(entry)
+            if !keep.isEmpty { setenv("MADEIRA_DOCK_KEEP_ALIVE", keep.joined(separator: ";"), 1) }
+        }
         SteamLog.event("[dock-launch] local-game=1")
     }
 }
