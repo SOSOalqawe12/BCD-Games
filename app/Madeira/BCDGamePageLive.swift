@@ -125,6 +125,7 @@ import UniformTypeIdentifiers
             if id == nil && !desktop { d.groups.append(withSteam(entry, profile)) }   // SOSOalqawe12 fork: Start with Steam
             d.groups.append(powerSound(profile))  // SOSOalqawe12 fork: Power, sound and logs
             d.groups.append(languageWindows(profile))   // SOSOalqawe12 fork: Language and windows
+            d.groups.append(controllerExtras(profile))  // SOSOalqawe12 fork: Controller extras
             d.groups.append(memory(profile))      // SOSOalqawe12 fork: Memory
             d.groups.append(libraries(profile))   // SOSOalqawe12 fork: Libraries override
             d.groups.append(environment(profile)) // SOSOalqawe12 fork: Environment variables
@@ -427,6 +428,21 @@ import UniformTypeIdentifiers
             Self.envLine("env.MADEIRA_TINY_WINDOW_FIX", "Size a tiny window to the screen", profile, [("", "Off"), ("1", "On")],
                          note: "For a game whose picture stays a tiny box in a corner: its window is sized to the screen."),
         ], note: "Each is read when the game starts.")
+    }
+
+    // MARK: Controller extras (SOSOalqawe12 fork)
+
+    /// A paired controller's rumble and lights, and its Home and Create buttons; lines of the game's own
+    /// file, read when the game starts.
+    private func controllerExtras(_ profile: GameProfile) -> BCDGameSettingGroup {
+        BCDGameSettingGroup(id: "controller-extras", title: "Controller extras", symbol: "gamecontroller", settings: [
+            Self.envLine("env.MADEIRA_PAD_OUTPUT", "Rumble and lights", profile,
+                         [("", "On"), ("xinput", "Rumble only"), ("hid", "DualSense effects only"), ("0", "Off")],
+                         note: "The game's rumble on the controller and, for a DualSense, its adaptive triggers, lightbar and player lights. Off saves the controller's battery."),
+            Self.envLine("env.MADEIRA_PAD_SYSTEM_GESTURES", "Home and Create buttons to the game", profile,
+                         [("", "Off: iOS uses them"), ("1", "On")],
+                         note: "The controller's Home and Create (Share) buttons go straight to the game, for games that use them as menu or map buttons, instead of iOS's own gestures."),
+        ], note: "Read when the game starts.")
     }
 
     // MARK: Start with Steam (SOSOalqawe12 fork)
