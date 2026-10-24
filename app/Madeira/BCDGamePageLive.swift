@@ -6,6 +6,7 @@ import Combine
 import Foundation
 import ImageIO
 import SwiftUI
+import UIKit
 import UniformTypeIdentifiers
 
 // The game page's engine side (BCDGamePage.swift, docs/BCD-UI-ARCHITECTURE.md): the only file of
@@ -121,7 +122,7 @@ import UniformTypeIdentifiers
             if let id { d.groups.append(steamGroup(entry, id)) }
             if let dlc = dlcGroup(game) { d.groups.append(dlc) }
             if !desktop { d.groups.append(libraryGroup(entry, gog: game.store == .gog || game.store == .epic)) }
-            if id == nil && !desktop { d.groups.append(withSteam(profile)) }   // SOSOalqawe12 fork: Start with Steam
+            if id == nil && !desktop { d.groups.append(withSteam(entry, profile)) }   // SOSOalqawe12 fork: Start with Steam
             d.groups.append(memory(profile))      // SOSOalqawe12 fork: Memory
             d.groups.append(libraries(profile))   // SOSOalqawe12 fork: Libraries override
             d.groups.append(environment(profile)) // SOSOalqawe12 fork: Environment variables
@@ -327,19 +328,41 @@ import UniformTypeIdentifiers
         ])
     }
 
+    // MARK: Open in Files (SOSOalqawe12 fork)
+
+    /// The Files app at the folder of the game's program (Files' shareddocuments: link to a folder of
+    /// BCD's Documents; a folder on an external drive opens at the drive's own path).
+    private static func openInFiles(_ entry: LibraryEntry) {
+        let folder = String(entry.launchRelativePath.split(separator: "/").dropLast().joined(separator: "/"))
+        let url = ExternalDrives.realURL(forDrivePath: folder) ?? LibraryModel.drive.appendingPathComponent(folder)
+        guard var parts = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return }
+        parts.scheme = "shareddocuments"
+        guard let link = parts.url else { return }
+        UIApplication.shared.open(link) { opened in
+            if !opened { LogStore.shared.log("[open-folder] Files did not open the game's folder") }
+        }
+    }
+
     // MARK: Start with Steam (SOSOalqawe12 fork)
 
     /// A game of your own that needs Steam running (a Steam copy kept outside Steam's library, on an
     /// external drive, say): its Steam App ID in the game's file (`steam-with`). Play then starts
     /// BCD Dock: Valve's client signs in, checks this account owns the App ID, and starts the
     /// game's own program with Steam running (LocalSteamStart).
-    private func withSteam(_ profile: GameProfile) -> BCDGameSettingGroup {
+    private func withSteam(_ entry: LibraryEntry, _ profile: GameProfile) -> BCDGameSettingGroup {
         let current = profile.get(LocalSteamStart.key) ?? ""
-        return BCDGameSettingGroup(id: "with-steam", title: "Start with Steam", symbol: "cloud", settings: [
+        var settings = [
             BCDGameSetting(id: "steam-with", title: "Steam App ID", kind: .text(prompt: "e.g. 346110"), value: current,
                            note: "For a Steam game you added from a folder (an external drive, say) that stops with \"Steam must be running\". With its App ID set, Play signs in to Steam through BCD Dock, Steam checks that your account owns the game, and the game starts with Steam running. The App ID is the number in the game's Steam store link. Empty starts the game on its own."),
-        ], note: "Needs a Steam sign-in in BCD and Valve's client components (Settings › BCD Dock).",
-           headline: current.isEmpty ? "Off" : "App \(current)")
+        ]
+        // The game's own steam_appid.txt names its App ID: one tap fills it in.
+        if current.isEmpty, let found = LocalSteamStart.suggestedAppID(entry) {
+            settings.append(BCDGameSetting(id: "steam-with-found", title: "Use App ID \(found)", kind: .action,
+                                           note: "The game's own steam_appid.txt names this App ID."))
+        }
+        return BCDGameSettingGroup(id: "with-steam", title: "Start with Steam", symbol: "cloud", settings: settings,
+                                   note: "Needs a Steam sign-in in BCD and Valve's client components (Settings › BCD Dock).",
+                                   headline: current.isEmpty ? "Off" : "App \(current)")
     }
 
     // MARK: Environment variables (SOSOalqawe12 fork)
@@ -730,6 +753,9 @@ import UniformTypeIdentifiers
         let how: String? = steamGame ? (entry.startsSteamGameDirectly ? "BCD starts this program itself, without Steam."
                                                                        : "Steam's client starts the game from this folder, with its usual launch option.") : nil
         settings.append(BCDGameSetting(id: "path", title: "Program", kind: .info, value: path, note: how))
+        // SOSOalqawe12 fork: the game's folder in the Files app, for mods, saves and config files.
+        settings.append(BCDGameSetting(id: "openfolder", title: "Open the game's folder in Files", kind: .action,
+                                       note: "Shows the folder of the game's program in the Files app, to add mods or change its files."))
         return BCDGameSettingGroup(id: "library", title: "Library", symbol: "books.vertical", settings: settings, headline: entry.title)
     }
 
@@ -931,6 +957,12 @@ import UniformTypeIdentifiers
         case "steam-with":   // SOSOalqawe12 fork: Start with Steam (digits only; empty turns it off)
             let id = value.trimmingCharacters(in: .whitespaces)
             if id.isEmpty || (Int(id).map(MadeiraDock.validAppID) ?? false) { setLine(game, LocalSteamStart.key, id) }
+        case "openfolder":   // SOSOalqawe12 fork: the Files app at the game's folder
+            if let entry = entry(for: game) { Self.openInFiles(entry) }
+        case "steam-with-found":   // SOSOalqawe12 fork: the App ID the game's steam_appid.txt names
+            if let entry = entry(for: game), let found = LocalSteamStart.suggestedAppID(entry) {
+                setLine(game, LocalSteamStart.key, String(found))
+            }
         case "nocopy": setLine(game, "env.MADEIRA_X64_IMAGE_NOCOPY", on ? "1" : "")
         case "leandiag": setLine(game, "env.MADEIRA_LEAN_DIAG", on ? "1" : "")
         case "touch": change(game) { $0.touchControls = on }

@@ -638,6 +638,24 @@ enum LocalSteamStart {
         return id
     }
 
+    /// An App ID the game's own files name: steam_appid.txt beside its program or in one of the
+    /// folders above it (up to drive_c, or up to its external drive's folder). nil when none names one.
+    static func suggestedAppID(_ entry: LibraryEntry) -> Int? {
+        var folder = Array(entry.launchRelativePath.split(separator: "/").map(String.init).dropLast())
+        for _ in 0..<5 {
+            guard !folder.isEmpty, folder != ["External"] else { break }
+            let path = folder.joined(separator: "/")
+            let dir = ExternalDrives.realURL(forDrivePath: path) ?? LibraryModel.drive.appendingPathComponent(path)
+            if let data = try? Data(contentsOf: dir.appendingPathComponent("steam_appid.txt")), data.count <= 64,
+               let text = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
+               let id = Int(text), MadeiraDock.validAppID(id) {
+                return id
+            }
+            folder.removeLast()
+        }
+        return nil
+    }
+
     /// The Dock start's game: its App ID and name; it has no Steam library or install folder.
     static func game(_ entry: LibraryEntry, appID: Int) -> DockGame {
         DockGame(id: appID, name: entry.title, installDir: "", library: "", installed: true, customExecutables: false)

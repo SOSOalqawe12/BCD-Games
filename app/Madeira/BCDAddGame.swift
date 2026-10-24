@@ -60,10 +60,13 @@ struct BCDProgramInfo: Equatable {
     /// SOSOalqawe12 fork: a folder on an external drive, picked in Files, linked into drive_c without
     /// copying; the answer is its folder here ("External/<name>").
     func addExternal(_ url: URL) throws -> String
+    /// SOSOalqawe12 fork: forgets an external drive by its name under External; nothing on it is deleted.
+    func removeExternal(_ name: String) throws
 }
 
 extension BCDAddGameBackend {
     func addExternal(_ url: URL) throws -> String { throw BCDGameError("External drives aren't available here.") }
+    func removeExternal(_ name: String) throws { throw BCDGameError("External drives aren't available here.") }
 }
 
 /// Where the screen finds its backend: the app's (BCDAddGameLive, found by its Objective-C name,
@@ -78,6 +81,11 @@ enum BCDDrivePath {
     static func parent(_ path: String) -> String {
         guard let cut = path.range(of: "/", options: .backwards) else { return "" }
         return String(path[..<cut.lowerBound])
+    }
+    /// SOSOalqawe12 fork: the drive's name when the path is an external drive's own folder ("External/<name>").
+    static func externalDrive(_ path: String) -> String? {
+        let parts = path.split(separator: "/").map(String.init)
+        return parts.count == 2 && parts[0] == "External" ? parts[1] : nil
     }
     static func trail(_ path: String) -> String {
         (["drive_c"] + path.split(separator: "/").map(String.init)).joined(separator: " › ")
@@ -226,6 +234,11 @@ struct BCDAddGame: View {
                 run: { pickingExternal = true })
             BCDEyebrow(text: "drive_c").padding(.top, 10).padding(.leading, 4)
         }
+        if let drive = BCDDrivePath.externalDrive(folder) {   // SOSOalqawe12 fork: a drive can be forgotten again
+            row(id: "add.external.remove", symbol: "eject", title: "Remove this drive from BCD",
+                detail: "BCD forgets \(drive) and its link in drive_c. Nothing on the drive is deleted. Games you added from it stay in your library, but they won't start until you add the drive again with the same name.",
+                run: { removeExternal(drive) })
+        }
         if let problem {
             Label(problem, systemImage: "exclamationmark.triangle.fill")
                 .font(BCDStyle.body(14)).foregroundStyle(BCDGameColors.amber)
@@ -334,6 +347,16 @@ struct BCDAddGame: View {
         }
         folder = path
         focus.focused = items.first.map { "add.item." + $0.path } ?? (path.isEmpty ? "add.every" : "add.back")
+    }
+
+    private func removeExternal(_ drive: String) {
+        guard let backend else { return }
+        do {
+            try backend.removeExternal(drive)
+            withAnimation(.easeOut(duration: 0.18)) { load("") }
+        } catch {
+            problem = error.localizedDescription
+        }
     }
 
     private func open(_ item: BCDDriveItem) {

@@ -1968,6 +1968,22 @@ enum ExternalDrives {
         return "External/" + label
     }
 
+    /// Forgets a drive: its bookmark and its link in drive_c/External. Only the link goes (unlink never
+    /// follows it): nothing on the drive is touched. Games added from it stay in the library and start
+    /// again once the drive is added again under the same name.
+    static func remove(_ name: String) throws {
+        guard saved[name] != nil || opened.contains(where: { $0.name == name }) else {
+            throw LibraryError.message("BCD doesn't know a drive called \(name).")
+        }
+        let link = folder.appendingPathComponent(name)
+        if (try? FileManager.default.attributesOfItem(atPath: link.path)[.type] as? FileAttributeType) == .typeSymbolicLink {
+            unlink(link.path)
+        }
+        saved[name] = nil
+        opened.removeAll { $0.name == name }
+        LogStore.shared.log("[external] removed \(name)")
+    }
+
     /// The drive's own URL for a path inside drive_c ("External/<name>/..."), or nil when the path is
     /// not on an opened drive. Read through this rather than the link: it is the path Files gave access to.
     static func realURL(forDrivePath path: String) -> URL? {

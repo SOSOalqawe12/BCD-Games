@@ -83,6 +83,11 @@ import Foundation
         do { return try ExternalDrives.add(url) } catch { throw BCDGameError(error.localizedDescription) }
     }
 
+    /// SOSOalqawe12 fork: forgets an external drive (ExternalDrives.remove); its files stay where they are.
+    func removeExternal(_ name: String) throws {
+        do { try ExternalDrives.remove(name) } catch { throw BCDGameError(error.localizedDescription) }
+    }
+
     func addEveryGame() async -> Int {
         await withCheckedContinuation { done in
             BCDLibraryImport.run { added in done.resume(returning: added) }
