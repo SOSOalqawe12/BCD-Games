@@ -17,7 +17,8 @@ concurrency:
 jobs:
   build:
     # madeira-bcd: runs only in the owner's repository; a fork's run is skipped.
-    if: github.repository == 'thebcd69/madeira-bcd'
+    # SOSOalqawe12/BCD-Games: this copy builds too (unsigned IPA as a run artifact).
+    if: github.repository == 'thebcd69/madeira-bcd' || github.repository == 'SOSOalqawe12/BCD-Games'
     runs-on: macos-15
     # contents: write only so the token can see DRAFT releases, which is where
     # the Metal Shader Converter installer is kept (drafts are not public).
@@ -98,6 +99,8 @@ jobs:
       # phone's scrub is tools/autotune-fixture.py's, the gzip is valid, the compressed copy
       # is deleted, automatic sending is opt-in and Wi-Fi only.
       - name: Check Send logs to BCD
+        # The log intake (bcd-logs/) is not in the public tree.
+        if: hashFiles('bcd-logs/worker/worker.js') != ''
         run: python3 tests/host/check-log-upload.py --require-swift
 
       # madeira-bcd FORK-ONLY: Settings › Feedback (FeedbackUpload*.swift, BCDSettingsFeedback.swift,
@@ -105,6 +108,7 @@ jobs:
       # and fields, nothing personal in the body, the person's words untouched, the limits, the
       # section's place after Logs, and the pull tool never printing the key.
       - name: Check Settings › Feedback
+        if: hashFiles('bcd-logs/worker/worker.js') != ''
         run: python3 tests/host/check-feedback.py --require-swift
 
       # A newer BCD, said at most once a day (BCDUpdateCheck.swift, BCDUpdateNotice.swift): the source's shape
@@ -2711,7 +2715,18 @@ jobs:
       # owner's PRIVATE bucket, never in the repository) and put both signed IPAs
       # plus installation pages (7-day pre-signed links) in the same bucket.
       # A signing/upload failure is caught by the private-bucket gate below.
+      # SOSOalqawe12/BCD-Games: no signing secrets here. The unsigned IPA is kept as this run's
+      # artifact; SideStore, AltStore or LiveContainer sign it on the device.
+      - name: Keep the unsigned IPA (BCD-Games)
+        if: github.repository != 'thebcd69/madeira-bcd'
+        uses: actions/upload-artifact@v4
+        with:
+          name: BCD-unsigned-ipa-${{ steps.bn.outputs.n }}
+          path: build-out/*-unsigned.ipa
+          if-no-files-found: error
+
       - name: Sign for OTA install (private bucket)
+        if: github.repository == 'thebcd69/madeira-bcd'
         id: ota
         continue-on-error: true
         env:
@@ -2735,7 +2750,7 @@ jobs:
       # private R2 bucket (the OTA step above). If that step did not succeed,
       # the build fails here instead of keeping the IPA somewhere public.
       - name: Check the IPA reached the private bucket
-        if: steps.ota.outcome != 'success'
+        if: github.repository == 'thebcd69/madeira-bcd' && steps.ota.outcome != 'success'
         run: |
           echo "::error::OTA signing/upload did not succeed: this build's IPA was not kept anywhere (no GitHub artifact by design)"
           exit 1
