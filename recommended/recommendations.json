@@ -264,7 +264,7 @@
     {
       "id": "gta5e-other",
       "title": "GTA V Enhanced (not Steam)",
-      "version": 2,
+      "version": 50,
       "match": {
         "programs": [
           {"name": "playgtav.exe", "steam": false, "beside": "GTA5_Enhanced.exe"},
@@ -293,11 +293,13 @@
         "env.MADEIRA_DEVICE_STATS = 1",
         "env.MADEIRA_EC_HOOK_TRACE = 0"
       ],
+      "smallRAMConfig": ["vram-mb = 3072", "swap-mb = 8192", "swap-mode = 2", "swap-min-mb = 1", "swap-images = 1", "avail-phys = 1"],
       "switches": {"avx": false, "nvidia": true, "wineVCRT": false, "fastSync": true, "resolution": "1280x720", "display": "fit"},
       "notes": [
         "GTA V Enhanced started from its own PlayGTAV.exe outside a Steam",
         "library (build 451); Madeira's own settings only. Version 2: the same",
-        "orphan-lock reaper mode as the Steam copy (its launcher and Social Club too)."
+        "orphan-lock reaper mode as the Steam copy (its launcher and Social Club too).",
+        "Version 50 (SOSOalqawe12 fork, 2026-10-24): under 12 GB of RAM, the Steam copy's 8 GB lines (v50 of gta5e-steam); the lines auto-tune's 8 GB rules (RAPOR-8GB) propose after a memory kill. Not tried on a device yet."
       ]
     },
     {
@@ -375,7 +377,7 @@
     {
       "id": "ghost-of-tsushima",
       "title": "Ghost of Tsushima",
-      "version": 3,
+      "version": 50,
       "match": {
         "steamAppIDs": [2215430],
         "steamFolders": ["ghost of tsushima director's cut", "ghost of tsushima"],
@@ -397,6 +399,7 @@
         "env.MADEIRA_EC_HOOK_TRACE = 0",
         "env.MADEIRA_THREAD_STACK_SPILL = 1"
       ],
+      "smallRAMConfig": ["swap-mode = 2", "swap-min-mb = 1"],
       "switches": {"avx": true, "nvidia": true, "wineVCRT": false, "fastSync": true, "semaphoreFastPath": false, "resolution": "1280x720", "display": "fit"},
       "notes": [
         "Ghost of Tsushima (build 336: DualSense input, rumble, triggers and light work).",
@@ -411,13 +414,14 @@
         "protected sections), the swap file holds 4 GB, and a new thread's stacks may",
         "take the kernel's pick once Wine's band is full (a thread the game could not",
         "create froze it in a cutscene, 15:39). With the game's own graphics at their",
-        "lowest it stays under the memory limit on an iPhone 17 Pro Max."
+        "lowest it stays under the memory limit on an iPhone 17 Pro Max.",
+        "Version 50 (SOSOalqawe12 fork, 2026-10-24): under 12 GB of RAM, its swap file broad from 1 MB; the lines auto-tune's 8 GB rules (RAPOR-8GB) propose after a memory kill. Not tried on a device yet."
       ]
     },
     {
       "id": "god-of-war",
       "title": "God of War",
-      "version": 1,
+      "version": 50,
       "match": {
         "steamAppIDs": [1593500],
         "steamFolders": ["godofwar", "god of war"],
@@ -435,9 +439,11 @@
         "env.WINEDEBUG = err+all,err-virtual,fixme-all",
         "env.MADEIRA_PAD_MODE = hid"
       ],
+      "smallRAMConfig": ["swap-mode = 2", "swap-min-mb = 1"],
       "switches": {"avx": false, "nvidia": false, "wineVCRT": false, "fastSync": true, "semaphoreFastPath": false, "resolution": "1920x1080", "display": "fit"},
       "notes": [
-        "God of War (2018) (build 335: 1080p, DualSense input)."
+        "God of War (2018) (build 335: 1080p, DualSense input).",
+        "Version 50 (SOSOalqawe12 fork, 2026-10-24): under 12 GB of RAM, its swap file broad from 1 MB; the lines auto-tune's 8 GB rules (RAPOR-8GB) propose after a memory kill. Not tried on a device yet."
       ]
     },
     {
@@ -661,7 +667,7 @@
     {
       "id": "ratchet-clank-rift-apart",
       "title": "Ratchet & Clank: Rift Apart",
-      "version": 6,
+      "version": 50,
       "match": {
         "steamAppIDs": [1895880],
         "steamFolders": ["ratchet & clank - rift apart"],
@@ -702,6 +708,7 @@
         "env.WINEDEBUG = err+all,err-virtual,fixme-all",
         "env.MADEIRA_VA_PRESSURE_GAP_OK = 1"
       ],
+      "smallRAMConfig": ["swap-mb = 3072", "swap-min-mb = 1"],
       "switches": {"avx": true, "nvidia": true, "wineVCRT": false, "fastSync": true, "fpsMode": 3, "display": "fit"},
       "notes": [
         "Ratchet & Clank: Rift Apart (Steam 1895880), not yet seen running: a Discord",
@@ -752,7 +759,8 @@
         "    compressed.",
         "  - fence-early: no fps change was measured, and two runs went well with it.",
         "Known open problems, not solved by this list: flat textures on large surfaces,",
-        "and 5-16 fps once iOS clamps the power."
+        "and 5-16 fps once iOS clamps the power.",
+        "Version 50 (SOSOalqawe12 fork, 2026-10-24): under 12 GB of RAM, a 3 GB swap file from 1 MB instead of 1 GB; the lines auto-tune's 8 GB rules (RAPOR-8GB) propose after a memory kill. Not tried on a device yet."
       ]
     },
     {

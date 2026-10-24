@@ -224,7 +224,7 @@ for ident in ('gta5e-steam', 'gta5e-other', 'rdr2-steam', 'rdr2-other', 'horizon
     assert 'env.MADEIRA_LOCK_ORPHAN = stamped' in presets[ident]['lines'], ident
 # Version 3 of the Steam list (build 514): the VC++ setup's elevated engine is not started, as for RDR2.
 # steam 4 (2026-10-21): env.MADEIRA_FEX_AVX = 0
-assert presets['gta5e-steam']['version'] == 50 and presets['gta5e-other']['version'] == 2, \
+assert presets['gta5e-steam']['version'] == 50 and presets['gta5e-other']['version'] == 50, \
     (presets['gta5e-steam']['version'], presets['gta5e-other']['version'])
 for ident in ('rdr2-steam', 'rdr2-other', 'gta5e-steam'):
     assert 'env.MADEIRA_SPAWN_BLOCK = RockstarErrorHandler;.be\\vc_redist' in presets[ident]['lines'], ident
@@ -235,7 +235,12 @@ assert legacy['version'] == 50 and legacy['title'] == 'GTA V Legacy (Steam)', le
 assert not any(line.startswith(('vram-mb', 'swap-mb')) for line in legacy['lines']), legacy['lines']
 assert legacy['small'] == ['swap-mb = 3072', 'swap-mode = 2', 'swap-min-mb = 1'], legacy['small']
 assert 'static var smallRAMDevice: Bool { deviceRAMBytes < 10 << 30 }' in lists_src
-assert [ident for ident, p in presets.items() if p['small']] == ['gta5e-steam', 'gta5l-steam', 'standard']
+assert [ident for ident, p in presets.items() if p['small']] == ['gta5e-steam', 'gta5e-other', 'gta5l-steam', 'ghost-of-tsushima', 'god-of-war',
+                                                                'ratchet-clank-rift-apart', 'standard']
+# SOSOalqawe12 fork v50: the 8 GB lines auto-tune's RAPOR-8GB rules propose, from the first start
+assert presets['gta5e-other']['small'] == presets['gta5e-steam']['small']
+assert presets['ghost-of-tsushima']['small'] == presets['god-of-war']['small'] == ['swap-mode = 2', 'swap-min-mb = 1']
+assert presets['ratchet-clank-rift-apart']['small'] == ['swap-mb = 3072', 'swap-min-mb = 1']
 # SOSOalqawe12 fork, v50: GTA V Enhanced on an 8 GB device (iPhone 15 Pro Max) gets HFW's and RDR2's swap lines.
 assert presets['gta5e-steam']['small'] == ['vram-mb = 3072', 'swap-mb = 8192', 'swap-mode = 2', 'swap-min-mb = 1',
                                            'swap-images = 1', 'avail-phys = 1'], presets['gta5e-steam']['small']
@@ -340,7 +345,7 @@ got = presets['ghost-of-tsushima']
 assert got['lines'][2:] == ['dxil-tess = 0', 'sampler-reduction = 3', 'ind-count = 6000', 'typed-view-align = 16',
                             'typed-view-shadow = 1', 'view-census = 1', 'env.MADEIRA_PAD_MODE = hid', 'swap-mb = 4096',
                             'env.MADEIRA_EC_HOOK_TRACE = 0', 'env.MADEIRA_THREAD_STACK_SPILL = 1'], got['lines']
-assert got['version'] == 3, got['version']
+assert got['version'] == 50, got['version']   # SOSOalqawe12 fork v50: 8 GB lines
 assert got['switches'] == ('avx: true, nvidia: true, wineVCRT: false, fastSync: true, semaphoreFastPath: false, '
                            'resolution: "1280x720", display: "fit"'), got['switches']
 assert not any(line.startswith('typed-view-rgb32') for p in presets.values() if p not in (hfw, rca)
@@ -378,7 +383,7 @@ assert not any(line.startswith(('env.MADEIRA_JUMBO_HALF', 'env.MADEIRA_CAGE_RELE
                                 'env.LC_ALL', 'fence-early', 'env.MADEIRA_VA_PRESSURE_GAP_OK')) for p in presets.values()
                if p is not rca for line in p['lines']), \
     'jumbo-half, cage-release, alias-release, LC_ALL, fence-early and va-pressure-gap are Rift Apart\'s only'
-assert rca['version'] == 6 and rca['switches'] == ('avx: true, nvidia: true, wineVCRT: false, fastSync: true, fpsMode: 3, '
+assert rca['version'] == 50 and rca['switches'] == ('avx: true, nvidia: true, wineVCRT: false, fastSync: true, fpsMode: 3, '
                                                    'display: "fit"'), rca
 assert not any(line.startswith(('view-census', 'typed-view-align', 'typed-view-shadow'))
                for p in presets.values() if p not in (hzd, got, hfw) for line in p['lines']), \
@@ -913,7 +918,8 @@ check(R.gta5LegacySteam.fileText.hasSuffix("env.MADEIRA_METAL_HUD_MAIN = 1\nswap
 let enhanced = R.all.first { $0.id == "gta5e-steam" }!
 check(enhanced.fileText.hasSuffix("vram-mb = 3072\nswap-mb = 8192\nswap-mode = 2\nswap-min-mb = 1\nswap-images = 1\navail-phys = 1\n"),
       "an 8 GB phone: the swap lines after GTA V Enhanced's list")
-check(zip(R.all, onTwelve).allSatisfy { ["gta5l-steam", "gta5e-steam", "standard"].contains($0.0.id) || $0.0.fileText == $0.1 },
+check(zip(R.all, onTwelve).allSatisfy { ["gta5l-steam", "gta5e-steam", "gta5e-other", "ghost-of-tsushima", "god-of-war", "ratchet-clank-rift-apart",
+                                        "standard"].contains($0.0.id) || $0.0.fileText == $0.1 },
       "every other list is the same on an 8 GB phone")
 R.deviceRAMBytes = 11_695 << 20
 check(id(other + #"\PlayGTAV.exe"#) == "none", "PlayGTAV.exe without GTA5_Enhanced.exe beside it")
