@@ -21,8 +21,9 @@ import Foundation
         path.isEmpty ? drive : drive.appendingPathComponent(path)
     }
 
-    /// Only what lies inside drive_c, links followed: a link out of it is not listed.
-    private func inside(_ url: URL) -> Bool { url.resolvingSymlinksInPath().path.hasPrefix(drive.path + "/") }
+    /// Only what lies inside drive_c, links followed: a link out of it is not listed, but for one into
+    /// an external drive added to it (ExternalDrives, drive_c/External).
+    private func inside(_ url: URL) -> Bool { ExternalDrives.driveRelative(url) != nil }
 
     func list(_ folder: String) throws -> [BCDDriveItem] {
         let base = url(folder)
@@ -69,6 +70,11 @@ import Foundation
         }
         LogStore.shared.log("[bcd-ui] added a game: \(entry.bits)-bit \(entry.graphicsAPI ?? "-")")
         return BCDLiveID.local(entry.id)
+    }
+
+    /// SOSOalqawe12 fork: a folder on an external drive, picked in Files, linked as drive_c/External/<name>.
+    func addExternal(_ url: URL) throws -> String {
+        do { return try ExternalDrives.add(url) } catch { throw BCDGameError(error.localizedDescription) }
     }
 
     func addEveryGame() async -> Int {

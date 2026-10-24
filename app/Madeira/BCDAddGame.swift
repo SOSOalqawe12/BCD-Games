@@ -4,6 +4,7 @@
 
 import Foundation
 import SwiftUI
+import UniformTypeIdentifiers
 
 // Add a game (docs/BCD-UI-ARCHITECTURE.md): the folders of BCD's drive_c, where the Files app
 // puts a game's folder; the game's program, chosen there and read before it is added; its name;
@@ -56,6 +57,13 @@ struct BCDProgramInfo: Equatable {
     func add(_ path: String, title: String) throws -> String
     /// Adds every game in drive_c the library lacks; the answer is how many.
     func addEveryGame() async -> Int
+    /// SOSOalqawe12 fork: a folder on an external drive, picked in Files, linked into drive_c without
+    /// copying; the answer is its folder here ("External/<name>").
+    func addExternal(_ url: URL) throws -> String
+}
+
+extension BCDAddGameBackend {
+    func addExternal(_ url: URL) throws -> String { throw BCDGameError("External drives aren't available here.") }
 }
 
 /// Where the screen finds its backend: the app's (BCDAddGameLive, found by its Objective-C name,
@@ -97,6 +105,8 @@ struct BCDAddGame: View {
     @State private var name = ""
     @State private var everyGame: String?
     @State private var busy = false
+    /// SOSOalqawe12 fork: Files is open to pick a folder on an external drive.
+    @State private var pickingExternal = false
     /// Added: waiting for the store to list it.
     @State private var waiting: String?
 
@@ -152,6 +162,15 @@ struct BCDAddGame: View {
             installButtons()
         }
         .onDisappear { focus.closeLayer(Self.layer) }
+        .fileImporter(isPresented: $pickingExternal, allowedContentTypes: [.folder]) { result in
+            guard case .success(let url) = result, let backend else { return }
+            do {
+                let path = try backend.addExternal(url)
+                withAnimation(.easeOut(duration: 0.18)) { load(path) }
+            } catch {
+                problem = error.localizedDescription
+            }
+        }
         .onChange(of: picked?.path) { _, _ in installButtons() }
         .onChange(of: folder) { _, _ in installButtons() }
         // Added: the game's page opens once the store lists the game.
@@ -202,6 +221,9 @@ struct BCDAddGame: View {
             row(id: "add.every", symbol: "square.stack.3d.down.right", title: busy ? "Adding…" : "Add every game in drive_c",
                 detail: everyGame ?? "Finds the games in drive_c and adds those your library lacks, each with its main program.",
                 enabled: !busy, run: addEveryGame)
+            row(id: "add.external", symbol: "externaldrive", title: "Play from an external drive",
+                detail: "Pick the drive, or the folder its games are in, in Files. It shows here as External, and its games run from the drive without being copied. Keep the drive connected while you play.",
+                run: { pickingExternal = true })
             BCDEyebrow(text: "drive_c").padding(.top, 10).padding(.leading, 4)
         }
         if let problem {

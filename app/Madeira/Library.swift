@@ -705,6 +705,7 @@ final class LibraryModel: ObservableObject {
             }
         }
         resetPhoneResolution()
+        ExternalDrives.restore()   // SOSOalqawe12 fork: games on an external drive (drive_c/External)
         applyRecommendations()
         RecommendationsSource.start(idle: { [weak self] in self?.current == nil && wine_process_is_running() == 0 }, onChange: { [weak self] in self?.applyRecommendations() })   // BCD: the online recommended settings (GameRecommendationsSource.swift): at most one check in 6 hours; a newer list reaches the library's games at once, never a running game
         // madeira-bcd: a tuned session that never came back (AutoTune.swift); off, nothing.
@@ -887,21 +888,20 @@ final class LibraryModel: ObservableObject {
     static let programExtensions: Set<String> = ["exe", "bat", "cmd"]
     static func executable(_ relative: String) throws -> URL {
         let url = drive.appendingPathComponent(relative).resolvingSymlinksInPath().standardizedFileURL
-        guard url.path.hasPrefix(drive.path + "/"), programExtensions.contains(url.pathExtension.lowercased()),
+        guard ExternalDrives.driveRelative(url) != nil, programExtensions.contains(url.pathExtension.lowercased()),
               FileManager.default.fileExists(atPath: url.path) else {
             throw LibraryError.message("Pick a program in drive_c: an .exe, .bat or .cmd file.")
         }
         return url
     }
     static func inspect(_ url: URL) throws -> LibraryEntry {
-        guard url.resolvingSymlinksInPath().path.hasPrefix(drive.path + "/") else {
-            throw LibraryError.message("Only programs inside drive_c can be added.")
+        guard let relative = ExternalDrives.driveRelative(url) else {
+            throw LibraryError.message("Only programs inside drive_c, or on an external drive added to it, can be added.")
         }
         if ["bat", "cmd"].contains(url.pathExtension.lowercased()) {
             // ml1163: a batch file has no PE header. Like every entry it starts
             // directly by default, as upstream starts every game; the details page
             // warns that Wine then stops when cmd.exe, its first process, exits.
-            let relative = String(url.resolvingSymlinksInPath().path.dropFirst(drive.path.count + 1))
             return LibraryEntry(title: url.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "_", with: " "),
                                 relativePath: relative, bits: 0)
         }
@@ -915,7 +915,6 @@ final class LibraryModel: ObservableObject {
         guard pe.count == 6, Array(pe.prefix(4)) == [0x50, 0x45, 0, 0] else { throw LibraryError.message("The file has no PE header.") }
         let machine = Int(pe[4]) | Int(pe[5]) << 8
         guard machine == 0x14c || machine == 0x8664 else { throw LibraryError.message("BCD runs x86 and x64 programs only.") }
-        let relative = String(url.resolvingSymlinksInPath().path.dropFirst(drive.path.count + 1))
         let name = url.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "_", with: " ")
         var entry = LibraryEntry(title: name, relativePath: relative, bits: machine == 0x14c ? 32 : 64)
         entry.graphicsAPI = graphicsImports(url)
@@ -1526,8 +1525,11 @@ private actor LibraryMetadataScanner {
         return result
     }
     /// `countBytes: false` skips the size walk (a Steam game's size is its install record's).
-    func scan(_ executable: URL, drive: URL, countBytes: Bool = true) -> (bytes: Int64?, api: String?) {
+    func scan(_ executable: URL, drive driveC: URL, countBytes: Bool = true) -> (bytes: Int64?, api: String?) {
         let folder = executable.deletingLastPathComponent()
+        // SOSOalqawe12 fork: a game on an external drive (ExternalDrives) is scanned where it is.
+        let root = ExternalDrives.opened.first { folder.resolvingSymlinksInPath().path.hasPrefix($0.target.path + "/") }?.target
+        let drive = root ?? driveC
         guard folder.path.hasPrefix(drive.path + "/"), !Task.isCancelled else { return (nil, nil) }
         let manager = FileManager.default
         // Executables commonly live below the installation root. Only ascend
@@ -1872,5 +1874,111 @@ enum EndedSessionSurface {
         hiddenByUs = false
         _ = winios_compositor_set_hidden(0)
         LogStore.shared.log("[library-surface] desktop shown for the new session")
+    }
+}
+
+/// SOSOalqawe12 fork: games on an external drive, played where they are. A folder picked in Files
+/// (the drive itself, or a folder on it) is kept as a bookmark and opened again at every start; it
+/// shows inside drive_c as External/<name>, a link to the drive, so Add a game, the library's
+/// paths (C:\External\<name>\...) and Wine read the game from the drive and nothing is copied.
+/// The drive must be connected while its games run; unplugged, the link leads nowhere until it is back.
+enum ExternalDrives {
+    static let key = "bcd.external.drives"
+    /// drive_c/External: one link per drive.
+    static var folder: URL { LibraryModel.drive.appendingPathComponent("External", isDirectory: true) }
+    /// The drives opened in this run, by name: the link inside drive_c and where it leads.
+    private(set) static var opened: [(name: String, target: URL)] = []
+
+    private static var saved: [String: Data] {
+        get { UserDefaults.standard.dictionary(forKey: key) as? [String: Data] ?? [:] }
+        set { UserDefaults.standard.set(newValue, forKey: key) }
+    }
+
+    /// A name that can be a folder name, unique among the drives kept.
+    private static func name(for url: URL) -> String {
+        var base = url.lastPathComponent.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-")
+        if base.isEmpty || base == "/" { base = "Drive" }
+        var name = base, n = 2
+        while saved[name] != nil { name = "\(base) \(n)"; n += 1 }
+        return name
+    }
+
+    /// Links one opened folder as drive_c/External/<name>.
+    @discardableResult
+    private static func link(_ name: String, _ target: URL) -> Bool {
+        let fm = FileManager.default
+        try? fm.createDirectory(at: folder, withIntermediateDirectories: true)
+        let link = folder.appendingPathComponent(name)
+        if (try? fm.destinationOfSymbolicLink(atPath: link.path)) != nil || fm.fileExists(atPath: link.path) {
+            guard (try? fm.attributesOfItem(atPath: link.path)[.type] as? FileAttributeType) == .typeSymbolicLink else {
+                return false   // a real folder of that name in drive_c/External stays as it is
+            }
+            try? fm.removeItem(at: link)
+        }
+        do {
+            try fm.createSymbolicLink(at: link, withDestinationURL: target)
+        } catch {
+            LogStore.shared.log("[external] could not link \(name): \(error.localizedDescription)")
+            return false
+        }
+        opened.removeAll { $0.name == name }
+        opened.append((name: name, target: target.resolvingSymlinksInPath()))
+        return true
+    }
+
+    /// App start: every drive kept is opened again and linked. One that is not connected is left
+    /// in the list for the next start.
+    static func restore() {
+        for (name, data) in saved {
+            var stale = false
+            guard let url = try? URL(resolvingBookmarkData: data, options: [], relativeTo: nil, bookmarkDataIsStale: &stale) else {
+                LogStore.shared.log("[external] \(name): not connected")
+                continue
+            }
+            let scoped = url.startAccessingSecurityScopedResource()   // kept open for the whole run: Wine reads the games
+            if stale, let fresh = try? url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil) {
+                saved[name] = fresh
+            }
+            let ok = link(name, url)
+            LogStore.shared.log("[external] \(name): \(ok ? "linked" : "not linked") (access \(scoped ? "granted" : "not granted"))")
+        }
+    }
+
+    /// A folder picked in Files: kept, opened and linked; the answer is its path in drive_c ("External/<name>").
+    static func add(_ url: URL) throws -> String {
+        let scoped = url.startAccessingSecurityScopedResource()   // not stopped: its games run in this process
+        guard (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true else {
+            if scoped { url.stopAccessingSecurityScopedResource() }
+            throw LibraryError.message("Pick a folder: the drive itself, or the folder its games are in.")
+        }
+        if let known = opened.first(where: { $0.target == url.resolvingSymlinksInPath() }) { return "External/" + known.name }
+        let data: Data
+        do {
+            data = try url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil)
+        } catch {
+            throw LibraryError.message("BCD couldn't keep access to this folder: \(error.localizedDescription)")
+        }
+        let label = Self.name(for: url)
+        saved[label] = data
+        guard link(label, url) else {
+            saved[label] = nil
+            throw LibraryError.message("BCD couldn't link this folder into drive_c.")
+        }
+        LogStore.shared.log("[external] added \(label)")
+        return "External/" + label
+    }
+
+    /// The path inside drive_c of a file on an opened drive, or of a file in drive_c itself; nil
+    /// for anything else. A link into a drive resolves to the drive, so this maps it back.
+    static func driveRelative(_ url: URL) -> String? {
+        let drive = LibraryModel.drive.path
+        let real = url.resolvingSymlinksInPath().standardizedFileURL.path
+        if real.hasPrefix(drive + "/") { return String(real.dropFirst(drive.count + 1)) }
+        for (name, target) in opened {
+            let root = target.standardizedFileURL.path
+            if real == root { return "External/" + name }
+            if real.hasPrefix(root + "/") { return "External/" + name + "/" + String(real.dropFirst(root.count + 1)) }
+        }
+        return nil
     }
 }
