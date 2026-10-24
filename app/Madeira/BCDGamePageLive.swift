@@ -121,6 +121,7 @@ import UniformTypeIdentifiers
             if let id { d.groups.append(steamGroup(entry, id)) }
             if let dlc = dlcGroup(game) { d.groups.append(dlc) }
             if !desktop { d.groups.append(libraryGroup(entry, gog: game.store == .gog || game.store == .epic)) }
+            d.groups.append(memory(profile))      // SOSOalqawe12 fork: Memory
             d.groups.append(libraries(profile))   // SOSOalqawe12 fork: Libraries override
         }
         if let id {
@@ -284,6 +285,28 @@ import UniformTypeIdentifiers
                       note: "Where barriers allow lets the GPU run passes side by side wherever the game's barriers permit; one after another is the safe default."),
             Self.toggle("nvidia", "Show the game an NVIDIA card", LibraryPrefs.nvidia(entry.windowsPath),
                         note: "For games that stop with \"no graphics card\" or \"failed to get GPU driver info\": Windows then reports an NVIDIA card and driver."),
+        ])
+    }
+
+    // MARK: Memory (SOSOalqawe12 fork)
+
+    /// The game's swap file and memory budgets, each a line of its own file that the runtime reads at
+    /// launch (swap-mb, swap-mode, vram-mb, avail-phys). Empty: bcd.cfg's value, else the default.
+    private func memory(_ profile: GameProfile) -> BCDGameSettingGroup {
+        let small = GameRecommendations.smallRAMDevice
+        return BCDGameSettingGroup(id: "memory", title: "Memory", symbol: "memorychip", settings: [
+            Self.line("swap-mb", "Swap file", profile,
+                      [("", "As set in Settings"), ("0", "Off"), ("2048", "2 GB"), ("3072", "3 GB"), ("4096", "4 GB"),
+                       ("6144", "6 GB"), ("8192", "8 GB")],
+                      note: "Moves game data to a file on this device's storage when memory runs short, so iOS closes the game less often. Needs that much free storage. Bigger helps heavy games on \(small ? "this 8 GB device" : "a smaller device"); it can stutter while data moves."),
+            Self.line("swap-mode", "What goes into the swap file", profile,
+                      [("", "Large allocations only"), ("2", "Everything 4 MB and up (broad)")],
+                      note: "Broad backs far more of the game's memory with the file. The heaviest games (Red Dead Redemption 2, Horizon Forbidden West) use broad."),
+            Self.line("vram-mb", "Video memory the game sees", profile,
+                      [("", "Default"), ("1536", "1.5 GB"), ("2048", "2 GB"), ("3072", "3 GB"), ("4096", "4 GB")],
+                      note: "The graphics memory Windows reports. Less makes games stream lower-detail textures and use less memory; more can look better and cost memory."),
+            Self.line("avail-phys", "Report memory left before the limit", profile, [("", "Off"), ("1", "On")],
+                      note: "The game sees how much memory is left before iOS would close it, instead of the device's free memory, so games and their launchers can free caches in time."),
         ])
     }
 
@@ -835,6 +858,7 @@ import UniformTypeIdentifiers
         case "fastsync": change(game) { $0.fastSync = on }
         case "semaphores": change(game) { $0.semaphoreFastPath = on }
         case "aslrfix": setLine(game, "env.MADEIRA_ASLR_FIX", on ? "1" : "")
+        case "swap-mb", "swap-mode", "vram-mb", "avail-phys": setLine(game, setting, value)
         case "touch": change(game) { $0.touchControls = on }
         case "overlay": change(game) { $0.performance = on }
         case "livelogs": change(game) { $0.liveLogs = on }
