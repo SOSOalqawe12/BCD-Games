@@ -1,7 +1,7 @@
 {
   "format": 1,
-  "version": 7,
-  "generated": "2026-10-23",
+  "version": 8,
+  "generated": "2026-10-24",
   "rules": [
     {
       "id": "rdr2-steam",
@@ -187,7 +187,7 @@
     {
       "id": "gta5e-steam",
       "title": "GTA V Enhanced (Steam)",
-      "version": 4,
+      "version": 50,
       "match": {
         "steamAppIDs": [3240220],
         "steamFolders": ["grand theft auto v enhanced"],
@@ -236,6 +236,7 @@
         "env.MADEIRA_PAD_MODE = hid",
         "env.MADEIRA_METAL_HUD_MAIN = 1"
       ],
+      "smallRAMConfig": ["vram-mb = 3072", "swap-mb = 8192", "swap-mode = 2", "swap-min-mb = 1", "swap-images = 1", "avail-phys = 1"],
       "switches": {"avx": false, "nvidia": true, "wineVCRT": false, "fastSync": true, "semaphoreFastPath": true, "fpsMode": 4, "display": "fit"},
       "notes": [
         "GTA V Enhanced from Steam, through Madeira Dock (build 456: 18 minutes",
@@ -252,7 +253,12 @@
         "session that had the line ended at the Launcher's \"Failed to connect to the Rockstar Games Library Service\"",
         "(builds 574 and 576, logs GBY65K, Y5MEB6, A50T0Q) while the same game connected with it off (8JXT6Q on the same",
         "phone, DGNRT5). The line pins AVX off, so a kept auto-tune line cannot switch it on again (the game's own file wins over",
-        "auto-tune's layer and a key the game's file sets is never proposed). Not tried on a device with a played session after it."
+        "auto-tune's layer and a key the game's file sets is never proposed). Not tried on a device with a played session after it.",
+        "Version 50 (SOSOalqawe12 fork, 2026-10-24): a device with less than 12 GB of RAM (iPhone 15 Pro Max, 8 GB) gets",
+        "Horizon Forbidden West's and RDR2's swap lines: an 8 GB broad swap file from 1 MB with the x64 images in it,",
+        "available memory reported against the app's limit, and a 3 GB video memory budget instead of 4 GB. Auto-tune's",
+        "8 GB rules (swap-8gb-memory-kill, swap-8gb-more) propose the same swap mode after a memory kill. The version is",
+        "high so the original BCD list online, at a lower version for this game, never replaces it. Not tried on a device yet."
       ]
     },
     {

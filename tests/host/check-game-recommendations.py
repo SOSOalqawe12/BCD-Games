@@ -223,7 +223,7 @@ for ident in ('gta5e-steam', 'gta5e-other', 'rdr2-steam', 'rdr2-other', 'horizon
     assert 'env.MADEIRA_LOCK_ORPHAN = stamped' in presets[ident]['lines'], ident
 # Version 3 of the Steam list (build 514): the VC++ setup's elevated engine is not started, as for RDR2.
 # steam 4 (2026-10-21): env.MADEIRA_FEX_AVX = 0
-assert presets['gta5e-steam']['version'] == 4 and presets['gta5e-other']['version'] == 2, \
+assert presets['gta5e-steam']['version'] == 50 and presets['gta5e-other']['version'] == 2, \
     (presets['gta5e-steam']['version'], presets['gta5e-other']['version'])
 for ident in ('rdr2-steam', 'rdr2-other', 'gta5e-steam'):
     assert 'env.MADEIRA_SPAWN_BLOCK = RockstarErrorHandler;.be\\vc_redist' in presets[ident]['lines'], ident
@@ -234,7 +234,10 @@ assert legacy['version'] == 3 and legacy['title'] == 'GTA V Legacy (Steam)', leg
 assert not any(line.startswith(('vram-mb', 'swap-mb')) for line in legacy['lines']), legacy['lines']
 assert legacy['small'] == ['swap-mb = 3072'], legacy['small']
 assert 'static var smallRAMDevice: Bool { deviceRAMBytes < 10 << 30 }' in lists_src
-assert [ident for ident, p in presets.items() if p['small']] == ['gta5l-steam']
+assert [ident for ident, p in presets.items() if p['small']] == ['gta5e-steam', 'gta5l-steam']
+# SOSOalqawe12 fork, v50: GTA V Enhanced on an 8 GB device (iPhone 15 Pro Max) gets HFW's and RDR2's swap lines.
+assert presets['gta5e-steam']['small'] == ['vram-mb = 3072', 'swap-mb = 8192', 'swap-mode = 2', 'swap-min-mb = 1',
+                                           'swap-images = 1', 'avail-phys = 1'], presets['gta5e-steam']['small']
 assert 'env.MADEIRA_DOCK_KEEP_ALIVE = Launcher.exe;GTA5.exe' in legacy['lines']
 assert 'env.MADEIRA_SPAWN_BLOCK = RockstarErrorHandler;.be\\vc_redist' in legacy['lines']
 assert 'env.DXMT_WSI_MODE_TABLE = 1' in legacy['lines'] and 'env.MADEIRA_EC_HOOK_TRACE = 0' in legacy['lines']
