@@ -308,6 +308,8 @@ import UniformTypeIdentifiers
                       note: "The graphics memory Windows reports. Less makes games stream lower-detail textures and use less memory; more can look better and cost memory."),
             Self.line("avail-phys", "Report memory left before the limit", profile, [("", "Off"), ("1", "On")],
                       note: "The game sees how much memory is left before iOS would close it, instead of the device's free memory, so games and their launchers can free caches in time."),
+            Self.toggle("nocopy", "64-bit programs without a second copy", profile.get("env.MADEIRA_X64_IMAGE_NOCOPY") == "1",
+                        note: "The emulator runs a 64-bit-only program and its DLLs where they are loaded, instead of from a copy in BCD's code pool. Saves hundreds of MB in big games and launchers; 27 tuned games use it, and on an 8 GB device every game without a tuned list has it."),
         ])
     }
 
@@ -896,6 +898,7 @@ import UniformTypeIdentifiers
         case "semaphores": change(game) { $0.semaphoreFastPath = on }
         case "aslrfix": setLine(game, "env.MADEIRA_ASLR_FIX", on ? "1" : "")
         case "swap-mb", "swap-mode", "vram-mb", "avail-phys": setLine(game, setting, value)
+        case "nocopy": setLine(game, "env.MADEIRA_X64_IMAGE_NOCOPY", on ? "1" : "")
         case "touch": change(game) { $0.touchControls = on }
         case "overlay": change(game) { $0.performance = on }
         case "livelogs": change(game) { $0.liveLogs = on }
