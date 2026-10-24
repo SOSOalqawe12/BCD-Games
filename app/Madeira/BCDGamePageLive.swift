@@ -678,7 +678,11 @@ import UniformTypeIdentifiers
                                            value: entry.arguments, note: "Handed to the program each time it starts."))
             let words = ["-dx12": "Ask for Direct3D 12", "-dx11": "Ask for Direct3D 11", "-dx10": "Ask for Direct3D 10",
                          "-dx9": "Ask for Direct3D 9", "-windowed": "Ask for a window", "-fullscreen": "Ask for full screen",
-                         "-nosplash": "Skip the splash screen"]
+                         "-nosplash": "Skip the splash screen",
+                         "-nostartupmovies": "Unreal Engine games: skip the intro videos",
+                         "-USEALLAVAILABLECORES": "Unreal Engine games: use every processor core",
+                         "-novid": "Source games: skip the intro video",
+                         "-high": "Source games: run at high priority"]
             for flag in BCDLaunchFlags.flags {
                 settings.append(Self.toggle("flag" + flag, flag, BCDLaunchFlags.has(entry.arguments, flag),
                                             note: (words[flag] ?? flag) + (flag.hasPrefix("-dx") ? "; one Direct3D flag at a time." : ".")))

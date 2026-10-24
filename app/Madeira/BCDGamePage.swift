@@ -567,7 +567,9 @@ enum BCDGameText {
 /// Direct3D flag at a time, and -windowed and -fullscreen rule each other out; arguments in
 /// quotes stay whole.
 enum BCDLaunchFlags {
-    static let flags = ["-dx11", "-dx12", "-dx10", "-dx9", "-windowed", "-fullscreen", "-nosplash"]
+    static let flags = ["-dx11", "-dx12", "-dx10", "-dx9", "-windowed", "-fullscreen", "-nosplash",
+                        // SOSOalqawe12 fork: Unreal Engine's and Source's own switches
+                        "-nostartupmovies", "-USEALLAVAILABLECORES", "-novid", "-high"]
     private static let direct3D: Set<String> = ["-dx9", "-dx10", "-dx11", "-dx12"]
 
     /// The arguments as the program gets them: split at spaces and tabs outside quotes.
