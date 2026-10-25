@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "version": 14,
+  "version": 15,
   "generated": "2026-10-24",
   "rules": [
     {
@@ -2683,7 +2683,7 @@
     {
       "id": "one-piece-bounty-rush",
       "title": "ONE PIECE Bounty Rush",
-      "version": 7,
+      "version": 8,
       "match": {
         "steamAppIDs": [2918150],
         "steamFolders": ["one piece bounty rush"]
@@ -2693,8 +2693,7 @@
         "# Reset to Recommended, at the bottom of the game's settings, brings them back.",
         "env.MADEIRA_EC_HOOK_TRACE = 0",
         "env.MADEIRA_DOCK_GAME_SCM = 1",
-        "env.WINEDLLOVERRIDES = video64=",
-        "env.MADEIRA_X64_IMAGE_NOCOPY = 1"
+        "env.WINEDLLOVERRIDES = video64="
       ],
       "notes": [
         "SOSOalqawe12 fork, 2026-10-24: Steam starts the game (launch-client-error 0) and no window ever appears. The game",
@@ -2728,7 +2727,10 @@
         "Version 7 (2026-10-25): the crash is a read of a global that is still zero. BCD runs a 64-bit image from its",
         "JIT-pool copy, so data reached relative to the running code can be the copy's, not the image's. Version 2's",
         "pure-x64 images without a pool copy hung for a different reason (the copy fault mprotect_exec now reports",
-        "instead, build 5); the line comes back to test the two together. A BCD setting only; nothing of the game changes."
+        "instead, build 5); the line comes back to test the two together. A BCD setting only; nothing of the game changes.",
+        "Version 8 (log 2026-10-25 04:02:38, the line on): the module still crashes at the same instruction. The emulator",
+        "runs x64 code at the image's own address and never from a pool copy ([pool-rip-fix]), so the copy cannot be the",
+        "cause; the line is taken out again."
       ]
     },
     {
