@@ -225,9 +225,11 @@ for ident in ('gta5e-steam', 'gta5e-other', 'rdr2-steam', 'rdr2-other', 'horizon
 # Version 3 of the Steam list (build 514): the VC++ setup's elevated engine is not started, as for RDR2.
 # steam 4 (2026-10-21): env.MADEIRA_FEX_AVX = 0
 # outside Steam v51 (SOSOalqawe12 fork, 2026-10-25): the Steam list's Dock lines, for Options › Start with Steam.
-assert presets['gta5e-steam']['version'] == 50 and presets['gta5e-other']['version'] == 51, \
+# v52: the Steam list's JIT-pool lines too (libcef.dll found the pool full in a Dock session, 2026-10-25).
+assert presets['gta5e-steam']['version'] == 50 and presets['gta5e-other']['version'] == 52, \
     (presets['gta5e-steam']['version'], presets['gta5e-other']['version'])
-for line in ('env.MADEIRA_DOCK_GAME_SCM = 1', 'env.MADEIRA_DOCK_KEEP_ALIVE = Launcher.exe;GTA5_Enhanced.exe'):
+for line in ('env.MADEIRA_DOCK_GAME_SCM = 1', 'env.MADEIRA_DOCK_KEEP_ALIVE = Launcher.exe;GTA5_Enhanced.exe',
+             'env.MADEIRA_X64_IMAGE_NOCOPY = 1', 'pool-low = 1', 'env.MADEIRA_POOL_RECYCLE_IMAGES = 1'):
     assert line in presets['gta5e-other']['lines'], line
 for ident in ('rdr2-steam', 'rdr2-other', 'gta5e-steam'):
     assert 'env.MADEIRA_SPAWN_BLOCK = RockstarErrorHandler;.be\\vc_redist' in presets[ident]['lines'], ident

@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "version": 15,
+  "version": 16,
   "generated": "2026-10-24",
   "rules": [
     {
@@ -264,7 +264,7 @@
     {
       "id": "gta5e-other",
       "title": "GTA V Enhanced (not Steam)",
-      "version": 51,
+      "version": 52,
       "match": {
         "programs": [
           {"name": "playgtav.exe", "steam": false, "beside": "GTA5_Enhanced.exe"},
@@ -293,7 +293,15 @@
         "env.MADEIRA_DEVICE_STATS = 1",
         "env.MADEIRA_EC_HOOK_TRACE = 0",
         "env.MADEIRA_DOCK_GAME_SCM = 1",
-        "env.MADEIRA_DOCK_KEEP_ALIVE = Launcher.exe;GTA5_Enhanced.exe"
+        "env.MADEIRA_DOCK_KEEP_ALIVE = Launcher.exe;GTA5_Enhanced.exe",
+        "pool-low = 1",
+        "pool-page-fit = 1",
+        "env.MADEIRA_POOL_HEAD_RESERVE_MB = 128",
+        "env.MADEIRA_POOL_LOW_IMAGES = 1",
+        "env.MADEIRA_POOL_RECYCLE_IMAGES = 1",
+        "env.MADEIRA_X64_IMAGE_NOCOPY = 1",
+        "env.MADEIRA_SPAWN_BLOCK = RockstarErrorHandler",
+        "env.WINEDLLOVERRIDES = video64="
       ],
       "smallRAMConfig": ["vram-mb = 3072", "swap-mb = 8192", "swap-mode = 2", "swap-min-mb = 1", "swap-images = 1", "avail-phys = 1"],
       "switches": {"avx": false, "nvidia": true, "wineVCRT": false, "fastSync": true, "resolution": "1280x720", "display": "fit"},
