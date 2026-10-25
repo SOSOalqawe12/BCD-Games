@@ -2042,7 +2042,7 @@ enum ExternalDrives {
         let name = parts[1]
         if let drive = opened.first(where: { $0.name == name }),
            FileManager.default.fileExists(atPath: drive.target.path) { return nil }
-        return "This game is on the external drive \"\(name)\", and BCD can't reach it. Connect the drive, restart BCD, then press Play again."
+        return "This game is on the external drive \"\(name)\", and BCD can't reach it. Connect the drive and press Play again; if it still isn't found, restart BCD."
     }
 
     /// The path inside drive_c of a file on an opened drive, or of a file in drive_c itself; nil

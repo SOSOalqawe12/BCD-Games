@@ -1260,6 +1260,8 @@ struct ContentView: View {
         // asked for (DeviceCapability.swift); A14 and later devices always pass.
         if let refusal = DeviceCapability.libraryRefusal(entry) { library.error = refusal; return }
         // SOSOalqawe12 fork: a game on an external drive that is not connected says so (ExternalDrives).
+        // A drive that was unplugged and plugged in again is opened again first (its bookmark).
+        if ExternalDrives.missingDrive(entry.relativePath) != nil { ExternalDrives.restore() }
         if let missing = ExternalDrives.missingDrive(entry.relativePath) { library.error = missing; return }
         // madeira-bcd: a game seen for the first time starts with Madeira's recommended
         // settings (GameRecommendationsApply.swift).
