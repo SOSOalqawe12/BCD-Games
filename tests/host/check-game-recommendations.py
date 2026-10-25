@@ -203,7 +203,9 @@ assert all(line in rdr2 for line in dock_only), 'the Dock lines are the Steam co
 # process only and every such session failed at the Launcher's service connection) is the Steam lists' alone.
 avx_pin = 'env.MADEIRA_FEX_AVX = 0'
 assert avx_pin in rdr2 and avx_pin in presets['gta5e-steam']['lines'] and avx_pin in presets['gta5l-steam']['lines']
-assert avx_pin not in rdr2_other['lines'] and avx_pin not in presets['gta5e-other']['lines']
+assert avx_pin not in rdr2_other['lines']
+# SOSOalqawe12 fork, gta5e-other v53: the Steam list's engine lines, the pin among them (the same Launcher and service).
+assert avx_pin in presets['gta5e-other']['lines']
 assert rdr2_other['lines'][2:] == [line for line in rdr2 if line not in dock_only and line != avx_pin] + ['env.MADEIRA_EC_HOOK_TRACE = 0'], \
     rdr2_other['lines']
 assert rdr2_other['version'] == 1 and rdr2_other['switches'] == presets['rdr2-steam']['switches'], rdr2_other
@@ -226,10 +228,14 @@ for ident in ('gta5e-steam', 'gta5e-other', 'rdr2-steam', 'rdr2-other', 'horizon
 # steam 4 (2026-10-21): env.MADEIRA_FEX_AVX = 0
 # outside Steam v51 (SOSOalqawe12 fork, 2026-10-25): the Steam list's Dock lines, for Options › Start with Steam.
 # v52: the Steam list's JIT-pool lines too (libcef.dll found the pool full in a Dock session, 2026-10-25).
-assert presets['gta5e-steam']['version'] == 50 and presets['gta5e-other']['version'] == 52, \
+# v53: the Steam list's engine lines (pso-warm, D3D11_SRC, EXECREQ_LEAVE, FEX_AVX, PIN_GRAPHICS_DLLS, TOUCH_MOUSE,
+# WOW_MIN_FREE_GB, X64_GRAPHICS_ENTRY, CHILD_ARGS -nobattleye): the list proven on a device is the Steam copy's.
+assert presets['gta5e-steam']['version'] == 50 and presets['gta5e-other']['version'] == 53, \
     (presets['gta5e-steam']['version'], presets['gta5e-other']['version'])
 for line in ('env.MADEIRA_DOCK_GAME_SCM = 1', 'env.MADEIRA_DOCK_KEEP_ALIVE = Launcher.exe;GTA5_Enhanced.exe',
-             'env.MADEIRA_X64_IMAGE_NOCOPY = 1', 'pool-low = 1', 'env.MADEIRA_POOL_RECYCLE_IMAGES = 1'):
+             'env.MADEIRA_X64_IMAGE_NOCOPY = 1', 'pool-low = 1', 'env.MADEIRA_POOL_RECYCLE_IMAGES = 1',
+             'pso-warm = 2', 'env.MADEIRA_CHILD_ARGS = PlayGTAV.exe -nobattleye', 'env.MADEIRA_PIN_GRAPHICS_DLLS = 1',
+             'env.MADEIRA_X64_GRAPHICS_ENTRY = 1'):
     assert line in presets['gta5e-other']['lines'], line
 for ident in ('rdr2-steam', 'rdr2-other', 'gta5e-steam'):
     assert 'env.MADEIRA_SPAWN_BLOCK = RockstarErrorHandler;.be\\vc_redist' in presets[ident]['lines'], ident

@@ -39,9 +39,20 @@ extension GameRecommendations {
     /// The recommendation for a game in drive_c: a program, or a Steam game's install folder.
     /// A game Madeira has no list for gets the standard one; a path that names nothing, none.
     static func recommendation(windowsPath: String, steamAppID: Int?) -> GameRecommendation? {
+        let steamAppID = steamAppID ?? steamWithAppID(windowsPath)   // SOSOalqawe12 fork: Start with Steam's App ID
         if let rec = match(windowsPath: windowsPath, steamAppID: steamAppID, fileExists: driveFileExists) { return rec }
         let parts = windowsPath.replacingOccurrences(of: "/", with: "\\").split(separator: "\\")
         return parts.count > 1 ? standard : nil
+    }
+
+    /// SOSOalqawe12 fork: the App ID of a program's `steam-with` line (Options › Start with Steam), or nil. A Steam copy
+    /// kept outside a Steam library and started with Steam is matched as the Steam copy, so it takes the list proven on a
+    /// device (GTA V Enhanced: gta5e-steam rather than gta5e-other, which has none of its engine lines).
+    static func steamWithAppID(_ windowsPath: String) -> Int? {
+        guard windowsPath.lowercased().hasSuffix(".exe"),
+              let text = GameProfile.parse(GameProfile(windowsPath: windowsPath).text)["steam-with"],
+              let id = Int(text.trimmingCharacters(in: .whitespaces)), id > 0 else { return nil }
+        return id
     }
 
     static func recommendation(for entry: LibraryEntry) -> GameRecommendation? {

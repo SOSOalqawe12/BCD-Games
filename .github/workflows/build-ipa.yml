@@ -88,6 +88,10 @@ jobs:
         run: python3 tests/host/check-game-recommendations.py --require-swift
         if: inputs.checks
 
+      - name: Check Start with Steam's App ID chooses the Steam copy's list
+        run: python3 tests/host/check-steam-with-recommendations.py
+        if: inputs.checks
+
       # BCD: the recommended settings online (recommended/recommendations.json, signed with
       # Ed25519; GameRecommendationsSource.swift): the built-in list equals the Swift literals it
       # replaced, signatures, allowed keys, versions, offline and a bad file keep the list in use.

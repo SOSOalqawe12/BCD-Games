@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "version": 17,
+  "version": 18,
   "generated": "2026-10-25",
   "rules": [
     {
@@ -264,7 +264,7 @@
     {
       "id": "gta5e-other",
       "title": "GTA V Enhanced (not Steam)",
-      "version": 52,
+      "version": 53,
       "match": {
         "programs": [
           {"name": "playgtav.exe", "steam": false, "beside": "GTA5_Enhanced.exe"},
@@ -301,7 +301,16 @@
         "env.MADEIRA_POOL_RECYCLE_IMAGES = 1",
         "env.MADEIRA_X64_IMAGE_NOCOPY = 1",
         "env.MADEIRA_SPAWN_BLOCK = RockstarErrorHandler",
-        "env.WINEDLLOVERRIDES = video64="
+        "env.WINEDLLOVERRIDES = video64=",
+        "pso-warm = 2",
+        "env.MADEIRA_CHILD_ARGS = PlayGTAV.exe -nobattleye",
+        "env.MADEIRA_D3D11_SRC = 1",
+        "env.MADEIRA_EXECREQ_LEAVE = 1",
+        "env.MADEIRA_FEX_AVX = 0",
+        "env.MADEIRA_PIN_GRAPHICS_DLLS = 1",
+        "env.MADEIRA_TOUCH_MOUSE = 1",
+        "env.MADEIRA_WOW_MIN_FREE_GB = 2",
+        "env.MADEIRA_X64_GRAPHICS_ENTRY = 1"
       ],
       "smallRAMConfig": ["vram-mb = 3072", "swap-mb = 8192", "swap-mode = 2", "swap-min-mb = 1", "swap-images = 1", "avail-phys = 1"],
       "switches": {"avx": false, "nvidia": true, "wineVCRT": false, "fastSync": true, "resolution": "1280x720", "display": "fit"},
@@ -309,7 +318,12 @@
         "GTA V Enhanced started from its own PlayGTAV.exe outside a Steam",
         "library (build 451); Madeira's own settings only. Version 2: the same",
         "orphan-lock reaper mode as the Steam copy (its launcher and Social Club too).",
-        "Version 50 (SOSOalqawe12 fork, 2026-10-24): under 12 GB of RAM, the Steam copy's 8 GB lines (v50 of gta5e-steam); the lines auto-tune's 8 GB rules (RAPOR-8GB) propose after a memory kill. Not tried on a device yet."
+        "Version 50 (SOSOalqawe12 fork, 2026-10-24): under 12 GB of RAM, the Steam copy's 8 GB lines (v50 of gta5e-steam); the lines auto-tune's 8 GB rules (RAPOR-8GB) propose after a memory kill. Not tried on a device yet.",
+        "Version 53 (SOSOalqawe12 fork, 2026-10-25): the engine lines of the Steam copy's list, which is the one proven on a",
+        "device (build 456: 18 minutes idle and 19 of driving): pso-warm = 2, D3D11_SRC, EXECREQ_LEAVE, FEX_AVX = 0 (the",
+        "Launcher's service connection), PIN_GRAPHICS_DLLS, TOUCH_MOUSE, WOW_MIN_FREE_GB = 2, X64_GRAPHICS_ENTRY and CHILD_ARGS",
+        "= PlayGTAV.exe -nobattleye (story mode; BattlEye does not run under Wine, GTA Online stays unavailable). A Steam copy",
+        "started with Steam (Options › Start with Steam) takes gta5e-steam itself now. Not tried on a device yet."
       ]
     },
     {

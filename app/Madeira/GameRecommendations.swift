@@ -201,6 +201,12 @@ extension GameRecommendationList {
                 return false
             }?.recommendation
         }
+        // SOSOalqawe12 fork: a program of a game of your own started with Steam (Options › Start with Steam passes
+        // its App ID here) takes the list of that App ID, the Steam copy's.
+        if let steamAppID, steamFolder == nil,
+           let rule = rules.first(where: { $0.match?.steamAppIDs.contains(steamAppID) == true }) {
+            return rule.recommendation
+        }
         // A program, wherever it was installed: only the game's own programs, so a
         // redistributable inside a game's folder gets nothing.
         let inSteam = steamAppID != nil || steamFolder != nil
