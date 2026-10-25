@@ -177,6 +177,8 @@ if grep -q "ec-ret-direct-v1 madeira-bcd" "$R/FEX/Source/Windows/ARM64EC/Module.
     python3 "$R/tools/patch-fex-ios-launcher-smc.py" "$R/FEX/Source/Windows/ARM64EC/Module.cpp"
     # SOSOalqawe12 fork: executable section views a game maps itself run (ONE PIECE Bounty Rush's loader).
     python3 "$R/tools/patch-fex-ios-exec-views.py" "$R/FEX/Source/Windows/Common"
+    # SOSOalqawe12 fork: executing a guard page raises STATUS_GUARD_PAGE_VIOLATION (ONE PIECE Bounty Rush).
+    python3 "$R/tools/patch-fex-ios-guard-exec.py" "$R/FEX/Source/Windows"
 else
     echo "=== with the map-notification, IntervalsLock and IRCapRIP fixes and the AVX opt-in ==="
     python3 "$R/tools/patch-fex-ios-mapview-selfshared.py" "$R/FEX/Source/Windows/ARM64EC/Module.cpp"
@@ -203,6 +205,8 @@ else
     python3 "$R/tools/patch-fex-ios-alias-xlate-bounds.py" "$R/FEX"
     python3 "$R/tools/patch-fex-ios-ec-ret-direct.py" "$R/FEX"
     python3 "$R/tools/patch-fex-ios-exec-views.py" "$R/FEX/Source/Windows/Common"
+    # SOSOalqawe12 fork: executing a guard page raises STATUS_GUARD_PAGE_VIOLATION (ONE PIECE Bounty Rush).
+    python3 "$R/tools/patch-fex-ios-guard-exec.py" "$R/FEX/Source/Windows"
 fi
 build
 git -C FEX checkout -- "$CPUF" Source/Windows/ARM64EC/Module.cpp Source/Windows/ARM64EC/Module.S Source/Windows/Common/InvalidationTracker.h Source/Windows/Common/InvalidationTracker.cpp FEXCore/Source/Interface/IR/PassManager.cpp Source/Windows/Common/Priv.h FEXCore/Source/Interface/Core/CPUID.cpp Source/Windows/ARM64EC/IosJitAlias.cpp FEXCore/include/FEXCore/Core/CoreState.h FEXCore/Source/Interface/Core/JIT/BranchOps.cpp Source/Windows/ARM64EC/libarm64ecfex.def FEXCore/include/FEXCore/Debug/InternalThreadState.h FEXCore/Source/Interface/Core/Core.cpp Source/Windows/Common/CallRetStack.h FEXCore/Source/Interface/Core/Dispatcher/Dispatcher.cpp FEXCore/Source/Interface/Core/ArchHelpers/Arm64Emitter.h FEXCore/Source/Interface/Core/ArchHelpers/Arm64Emitter.cpp FEXCore/Source/Interface/Core/JIT/JIT.cpp
