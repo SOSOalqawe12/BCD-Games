@@ -714,7 +714,52 @@ final class LibraryModel: ObservableObject {
         // SOSOalqawe12 fork: a Steam copy started on its own says so in its log; Start with Steam is the way.
         let steam = Self.logSays(LogStore.shared.logFileURL, "SteamAPI_Init() failed")
             ? " The game's log says Steam wasn't running: for a Steam copy, set its App ID in Options › Start with Steam." : ""
-        return "The game quit with Windows error 0x\(String(status, radix: 16, uppercase: true))\(kind).\(steam) To report the problem, export the diagnostic log."
+        // SOSOalqawe12 fork: the error box the game raised before it quit, in its own words (NtRaiseHardError's
+        // [hard-error] line, tools/patch-wine-hard-error.py): GTA V's 0xDEADC0DE says nothing without it.
+        let said = Self.gameMessage(LogStore.shared.logFileURL).map { " The game's own message: \u{201C}\($0)\u{201D}." } ?? ""
+        return "The game quit with Windows error 0x\(String(status, radix: 16, uppercase: true))\(kind).\(said)\(steam) To report the problem, export the diagnostic log."
+    }
+    /// SOSOalqawe12 fork: the last error box a program raised (a "[hard-error] caption=L\"…\" text=L\"…\"" line) in the
+    /// log's last 4 MB, as "Caption: text" of at most 300 characters; nil when there is none.
+    static func gameMessage(_ log: URL) -> String? {
+        guard let h = try? FileHandle(forReadingFrom: log) else { return nil }
+        defer { try? h.close() }
+        let size = (try? h.seekToEnd()) ?? 0
+        guard (try? h.seek(toOffset: size > 4 << 20 ? size - (4 << 20) : 0)) != nil, let data = try? h.readToEnd() else { return nil }
+        guard let line = String(decoding: data, as: UTF8.self).split(separator: "\n")
+            .last(where: { $0.contains("[hard-error] caption=") }) else { return nil }
+        return hardErrorWords(String(line))
+    }
+    /// One "[hard-error]" line's caption and text, with Wine's debugstr_w escapes undone (\\n \\r \\t \\" \\\\ and
+    /// \\HHHH for other characters; a cut string ends in "..."), each run of spaces made one.
+    static func hardErrorWords(_ line: String) -> String? {
+        guard let c = line.range(of: "caption="), let t = line.range(of: " text=", range: c.upperBound..<line.endIndex) else { return nil }
+        func value(_ raw: Substring) -> String {
+            var s = Substring(raw.trimmingCharacters(in: .whitespacesAndNewlines))
+            if s == "(null)" || s == "<null>" { return "" }   // no string at all (debugstr_us, the patch's own word)
+            if s.hasSuffix("\"...") { s = s.dropLast(3) }
+            if s.hasPrefix("L\"") { s = s.dropFirst(2) } else if s.hasPrefix("\"") { s = s.dropFirst() }
+            if s.hasSuffix("\"") { s = s.dropLast() }
+            var out = "", i = s.startIndex
+            while i < s.endIndex {
+                let next = s.index(after: i)
+                guard s[i] == "\\", next < s.endIndex else { out.append(s[i]); i = next; continue }
+                switch s[next] {
+                case "n", "r", "t": out.append(" "); i = s.index(after: next)
+                case "\"", "\\": out.append(s[next]); i = s.index(after: next)
+                default:
+                    let end = s.index(next, offsetBy: 4, limitedBy: s.endIndex) ?? s.endIndex
+                    if s.distance(from: next, to: end) == 4, let v = UInt32(s[next..<end], radix: 16), let u = Unicode.Scalar(v) {
+                        out.unicodeScalars.append(u); i = end
+                    } else { out.append(s[i]); i = next }
+                }
+            }
+            return out.split(separator: " ", omittingEmptySubsequences: true).joined(separator: " ")
+        }
+        let caption = value(line[c.upperBound..<t.lowerBound]), body = value(line[t.upperBound...])
+        let words = caption.isEmpty ? body : body.isEmpty ? caption : caption + ": " + body
+        guard !words.isEmpty, words != "(null)" else { return nil }
+        return words.count > 300 ? String(words.prefix(300)) + "\u{2026}" : words
     }
     /// Whether the log's last 4 MB hold `text`.
     static func logSays(_ log: URL, _ text: String) -> Bool {
