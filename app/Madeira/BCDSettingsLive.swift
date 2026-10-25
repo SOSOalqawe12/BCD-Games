@@ -489,8 +489,8 @@ struct BCDTouchEditorHost: View {
     func clear(_ id: String) {
         guard let item = StorageModel.items.first(where: { $0.id == id }), item.deletable else { return }
         // SOSOalqawe12 fork: a running game may be using its temporary files right now.
-        if id == "wintemp", wine_process_is_running() != 0 {
-            LogStore.shared.log("[bcd-settings] storage clear wintemp held: a game is running")
+        if id == "wintemp" || id == "webcache", wine_process_is_running() != 0 {
+            LogStore.shared.log("[bcd-settings] storage clear \(id) held: a game is running")
             return
         }
         LogStore.shared.log("[bcd-settings] storage clear \(id)")

@@ -55,6 +55,21 @@ final class StorageModel: ObservableObject {
         return children(folders)
     }
 
+    /// SOSOalqawe12 fork: what is inside the rebuildable web caches of Rockstar's launcher (Social Club's
+    /// Chromium: Cache, Code Cache, GPUCache and the Dawn caches of every profile's Launcher\Renderer\Default).
+    /// Cookies, local storage and settings are left alone, so the Rockstar sign-in stays.
+    static func launcherCaches() -> [URL] {
+        guard let drive = GameLibrary.driveC else { return [] }
+        let users = (try? FileManager.default.contentsOfDirectory(atPath: drive.appendingPathComponent("users").path)) ?? []
+        let caches = ["Cache", "Code Cache", "GPUCache", "DawnCache", "DawnGraphiteCache", "DawnWebGPUCache"]
+        return children(users.flatMap { user in
+            caches.map {
+                drive.appendingPathComponent("users/\(user)/Documents/Rockstar Games/Social Club/Launcher/Renderer/Default/\($0)",
+                                             isDirectory: true)
+            }
+        })
+    }
+
     private static func children(_ folders: [URL]) -> [URL] {
         folders.flatMap { folder in
             ((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []).map { folder.appendingPathComponent($0) }
@@ -81,6 +96,9 @@ final class StorageModel: ObservableObject {
         StorageItem(id: "dumps", title: "Crash dumps",
                     detail: "Written when a Windows program crashes (Steam's dumps and CrashDumps folders)", deletable: true,
                     urls: { StorageModel.crashDumps() }),
+        StorageItem(id: "webcache", title: "Rockstar launcher web cache",
+                    detail: "Social Club's browser cache, rebuilt when the launcher opens; the sign-in stays. Clear it while no game runs", deletable: true,
+                    urls: { StorageModel.launcherCaches() }),
         StorageItem(id: "drive", title: "Windows drive (C:)",
                     detail: "Games, saves and the Windows files", deletable: false,
                     urls: { [GameLibrary.driveC].compactMap { $0 } }),
