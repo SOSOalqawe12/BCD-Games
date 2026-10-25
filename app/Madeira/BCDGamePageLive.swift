@@ -382,7 +382,7 @@ import UniformTypeIdentifiers
     /// The Files app at the folder of the game's program (Files' shareddocuments: link to a folder of
     /// BCD's Documents; a folder on an external drive opens at the drive's own path).
     private static func openInFiles(_ entry: LibraryEntry) {
-        let folder = String(entry.launchRelativePath.split(separator: "/").dropLast().joined(separator: "/"))
+        let folder = entry.programFolderRelativePath
         openURLInFiles(ExternalDrives.realURL(forDrivePath: folder) ?? LibraryModel.drive.appendingPathComponent(folder))
     }
 
@@ -581,7 +581,7 @@ import UniformTypeIdentifiers
 
     /// Those of them the folder of the game's program holds.
     private static func modLoaderDLLs(_ entry: LibraryEntry) -> [String] {
-        let folder = String(entry.launchRelativePath.split(separator: "/").dropLast().joined(separator: "/"))
+        let folder = entry.programFolderRelativePath
         let url = ExternalDrives.realURL(forDrivePath: folder) ?? LibraryModel.drive.appendingPathComponent(folder)
         let files = Set(((try? FileManager.default.contentsOfDirectory(atPath: url.path)) ?? []).map { $0.lowercased() })
         return modLoaderNames.filter { files.contains($0 + ".dll") }

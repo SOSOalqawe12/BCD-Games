@@ -428,6 +428,19 @@ struct LibraryEntry: Codable, Identifiable {
         return relativePath + "/" + program
     }
     var launchWindowsPath: String { "C:\\" + launchRelativePath.replacingOccurrences(of: "/", with: "\\") }
+    /// SOSOalqawe12 fork: the folder of what starts, relative to drive_c: the program's own folder, or for a
+    /// Steam game started through Dock (whose path is its install folder) the folder of Steam's program when
+    /// it is known, else the install folder. Mods, DLL checks and Open in Files look here.
+    var programFolderRelativePath: String {
+        let parts = launchRelativePath.split(separator: "/").map(String.init)
+        let last = parts.last?.lowercased() ?? ""
+        if last.hasSuffix(".exe") || last.hasSuffix(".bat") || last.hasSuffix(".cmd") { return parts.dropLast().joined(separator: "/") }
+        if let program = steamProgram, !program.isEmpty {
+            let inside = program.replacingOccurrences(of: "\\", with: "/").split(separator: "/").dropLast().joined(separator: "/")
+            return inside.isEmpty ? relativePath : relativePath + "/" + inside
+        }
+        return relativePath
+    }
     /// "The game"'s working folder as a Windows path, or nil for the program's own folder.
     var steamWorkingWindowsPath: String? {
         guard startsSteamGameDirectly, let folder = steamProgramFolder else { return nil }
@@ -1985,6 +1998,9 @@ enum ExternalDrives {
     /// in the list for the next start.
     static func restore() {
         for (name, data) in saved {
+            // Play calls this again for a drive that dropped out: one still reachable keeps its access
+            // (each start of a security-scoped access is one more the process holds until it quits).
+            if let drive = opened.first(where: { $0.name == name }), FileManager.default.fileExists(atPath: drive.target.path) { continue }
             var stale = false
             guard let url = try? URL(resolvingBookmarkData: data, options: [], relativeTo: nil, bookmarkDataIsStale: &stale) else {
                 LogStore.shared.log("[external] \(name): not connected")
@@ -2094,17 +2110,24 @@ enum OptInDLLPreflight {
     /// Reads the program's and its folder's DLLs' imports and adds the lines they need; returns what it added.
     @discardableResult
     static func apply(_ entry: LibraryEntry) -> [String] {
-        guard entry.desktop != true, entry.launchRelativePath.lowercased().hasSuffix(".exe"),
-              MadeiraConfig.flag("MADEIRA_DLL_PREFLIGHT", fallback: true) else { return [] }   // 0 in bcd.cfg: off
-        let parts = entry.launchRelativePath.split(separator: "/").map(String.init)
-        let folderPath = parts.dropLast().joined(separator: "/")
-        let folder = ExternalDrives.realURL(forDrivePath: folderPath) ?? LibraryModel.drive.appendingPathComponent(folderPath)
-        let exe = folder.appendingPathComponent(parts.last ?? "")
-        let fm = FileManager.default
-        let local = (try? fm.contentsOfDirectory(atPath: folder.path)) ?? []
-        let localNames = Set(local.map { $0.lowercased() })
-        var files = [exe]
-        files += local.filter { $0.lowercased().hasSuffix(".dll") }.prefix(64).map { folder.appendingPathComponent($0) }
+        guard entry.desktop != true, MadeiraConfig.flag("MADEIRA_DLL_PREFLIGHT", fallback: true) else { return [] }   // 0 in bcd.cfg: off
+        let files: [URL], localNames: Set<String>
+        if entry.launchRelativePath.lowercased().hasSuffix(".exe") {
+            let parts = entry.launchRelativePath.split(separator: "/").map(String.init)
+            let folderPath = parts.dropLast().joined(separator: "/")
+            let folder = ExternalDrives.realURL(forDrivePath: folderPath) ?? LibraryModel.drive.appendingPathComponent(folderPath)
+            let local = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
+            localNames = Set(local.map { $0.lowercased() })
+            files = [folder.appendingPathComponent(parts.last ?? "")]
+                + local.filter { $0.lowercased().hasSuffix(".dll") }.prefix(64).map { folder.appendingPathComponent($0) }
+        } else if entry.steamAppID != nil {
+            // A Steam game through Dock: Valve's client picks the program, so every program of the install
+            // (and the DLLs beside them) is read; its first start no longer ends at 0xC0000135 either.
+            (files, localNames) = steamFiles(ExternalDrives.realURL(forDrivePath: entry.relativePath)
+                                             ?? LibraryModel.drive.appendingPathComponent(entry.relativePath))
+        } else {
+            return []
+        }
         var imported = Set<String>()
         for file in files { imported.formUnion(LibraryModel.importNames(file)) }
         let profile = GameProfile(windowsPath: entry.windowsPath)
@@ -2127,5 +2150,37 @@ enum OptInDLLPreflight {
             LogStore.shared.log("[dll-preflight] \(entry.title): \(added.joined(separator: "; ")) before the start")
         }
         return added
+    }
+
+    /// Folders of an install that hold other vendors' installers, not the game: their programs are not read.
+    static let skippedFolders: Set<String> = ["_commonredist", "commonredist", "redist", "redists", "redistributables", "directx",
+                                              "vcredist", "dotnet", "installers", "installer", "prereq", "prerequisites", "support",
+                                              "__installer", "easyanticheat", "battleye", "crashreportclient"]
+
+    /// A Steam install's programs (up to 24, four folders deep at most, 4000 entries looked at) and the DLLs
+    /// beside them (up to 64), and the names of every file in those folders (the game's own copies).
+    static func steamFiles(_ root: URL) -> (files: [URL], names: Set<String>) {
+        let fm = FileManager.default
+        guard let walk = fm.enumerator(at: root, includingPropertiesForKeys: [.isDirectoryKey],
+                                       options: [.skipsHiddenFiles, .skipsPackageDescendants]) else { return ([], []) }
+        var programs: [URL] = [], seen = 0
+        while let url = walk.nextObject() as? URL, seen < 4000, programs.count < 24 {
+            seen += 1
+            let name = url.lastPathComponent.lowercased()
+            if (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
+                if walk.level >= 4 || skippedFolders.contains(name) { walk.skipDescendants() }
+            } else if name.hasSuffix(".exe") && !name.contains("crash") && !name.hasPrefix("unins") {
+                programs.append(url)
+            }
+        }
+        var files = programs, names = Set<String>(), dlls = 0
+        for folder in Set(programs.map { $0.deletingLastPathComponent() }) {
+            let local = (try? fm.contentsOfDirectory(atPath: folder.path)) ?? []
+            names.formUnion(local.map { $0.lowercased() })
+            for dll in local where dll.lowercased().hasSuffix(".dll") && dlls < 64 {
+                files.append(folder.appendingPathComponent(dll)); dlls += 1
+            }
+        }
+        return (files, names)
     }
 }

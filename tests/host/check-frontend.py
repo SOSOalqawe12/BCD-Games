@@ -111,6 +111,7 @@ struct TouchControl: Codable, Equatable { var nx = 0.5 }
 enum ControlAction: Codable, Equatable, Hashable { case none }   // LibraryEntry.controllerBinds
 enum GamepadInput { static let keyboardMouseAvailable = true }   // LibraryEntry's per-game DirectInput choice
 enum LibraryError: LocalizedError { case message(String) }
+enum LocalSteamStart { static func appID(_ entry: LibraryEntry) -> Int? { nil } }   // MadeiraDock.swift: none of these games has Start with Steam
 func env(_ name: String) -> String? { getenv(name).map { String(cString: $0) } }
 '''
 swift += block(lib, 'struct LibraryEntry: Codable, Identifiable') + '\n'
@@ -267,6 +268,15 @@ rgl.startServices = false; rgl.launchMode = "direct"
 expect(!rgl.runsInDesktop && rgl.servicesScript == nil, "Rockstar Launcher: both can be turned off")
 expect(LibraryEntry.isRockstarProgram("C:\\Games\\GTA V\\PlayGTAV.exe") && !LibraryEntry.isRockstarProgram("C:\\Games\\Other\\Launcher.exe"),
        "Rockstar programs: the stubs anywhere, Launcher.exe only in Rockstar Games\\Launcher")
+// SOSOalqawe12 fork: the folder of what starts; a Steam game through Dock is its install folder, not the one above it.
+var dockGame = LibraryEntry(title: "Dock", relativePath: "Program Files (x86)/Steam/steamapps/common/Some Game", bits: 0)
+dockGame.steamAppID = 10
+expect(rgl.programFolderRelativePath == "Program Files/Rockstar Games/Launcher"
+       && dockGame.programFolderRelativePath == "Program Files (x86)/Steam/steamapps/common/Some Game",
+       "program folder: a program's own folder; a Dock game's install folder")
+dockGame.steamProgram = "Binaries\\Win64\\Game-Win64-Shipping.exe"
+expect(dockGame.programFolderRelativePath == "Program Files (x86)/Steam/steamapps/common/Some Game/Binaries/Win64",
+       "program folder: Steam's program inside the install folder when it is known")
 var inDesk = game; inDesk.launchMode = "desktop"; inDesk.arguments = "-windowed"
 inDesk.configureLaunch()
 expect(env("MADEIRA_EXE") == "explorer.exe" && env("MADEIRA_DESKTOP") == "1"

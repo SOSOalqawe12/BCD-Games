@@ -641,7 +641,7 @@ enum LocalSteamStart {
     /// An App ID the game's own files name: steam_appid.txt beside its program or in one of the
     /// folders above it (up to drive_c, or up to its external drive's folder). nil when none names one.
     static func suggestedAppID(_ entry: LibraryEntry) -> Int? {
-        var folder = Array(entry.launchRelativePath.split(separator: "/").map(String.init).dropLast())
+        var folder = entry.programFolderRelativePath.split(separator: "/").map(String.init)
         for _ in 0..<5 {
             guard !folder.isEmpty, folder != ["External"] else { break }
             let path = folder.joined(separator: "/")
@@ -665,7 +665,7 @@ enum LocalSteamStart {
 
     /// The .exe names in the folder of the game's program (the list stays under the host's 1024 characters).
     static func programNames(_ entry: LibraryEntry) -> [String] {
-        let folderPath = entry.launchRelativePath.split(separator: "/").dropLast().joined(separator: "/")
+        let folderPath = entry.programFolderRelativePath
         let folder = ExternalDrives.realURL(forDrivePath: folderPath) ?? LibraryModel.drive.appendingPathComponent(folderPath)
         var names: [String] = [], length = 0
         for name in ((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []).sorted()
@@ -690,8 +690,15 @@ enum LocalSteamStart {
         guard !entry.isBatch else { throw DockError.message("Start with Steam starts a game's .exe, not a batch file.") }
     }
 
+    /// What the last local start exported itself (name and value), so a later Dock start in the same app
+    /// run does not inherit it (a Steam game started after GTA V got its service manager and keep-alive list).
+    private static var exported: [String: String] = [:]
+
     /// The host's environment for this start; nil clears it, so no other Dock start inherits it.
     static func configure(_ entry: LibraryEntry?) {
+        // Only a value still as this code set it: one that bcd.cfg or a game's file put there since stays.
+        for (name, value) in exported where getenv(name).map({ String(cString: $0) }) == value { unsetenv(name) }
+        exported = [:]
         guard let entry else {
             unsetenv("MADEIRA_STEAM_HOST_LOCAL_EXE"); unsetenv("MADEIRA_STEAM_HOST_LOCAL_ARGS"); return
         }
@@ -700,11 +707,12 @@ enum LocalSteamStart {
         // A game of your own has no Steam-game settings: launchers want Windows' service manager (GTA V's
         // Rockstar service, RPC error 1722 without it), and a program that starts the game and exits must not
         // end the session, so the folder's programs keep it. The game's own lines (applied later) win.
+        func export(_ name: String, _ value: String) { setenv(name, value, 1); exported[name] = value }
         let profile = GameProfile(windowsPath: entry.windowsPath)
-        if profile.get("env.MADEIRA_DOCK_GAME_SCM") == nil { setenv("MADEIRA_DOCK_GAME_SCM", "1", 1) }
+        if profile.get("env.MADEIRA_DOCK_GAME_SCM") == nil { export("MADEIRA_DOCK_GAME_SCM", "1") }
         if profile.get("env.MADEIRA_DOCK_KEEP_ALIVE") == nil {
             let keep = programNames(entry)
-            if !keep.isEmpty { setenv("MADEIRA_DOCK_KEEP_ALIVE", keep.joined(separator: ";"), 1) }
+            if !keep.isEmpty { export("MADEIRA_DOCK_KEEP_ALIVE", keep.joined(separator: ";")) }
         }
         SteamLog.event("[dock-launch] local-game=1")
     }
