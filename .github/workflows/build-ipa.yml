@@ -813,6 +813,9 @@ jobs:
           python3 tests/host/check-avail-phys.py
           python3 tools/patch-wine-avail-phys.py wine/dlls/ntdll/unix/system.c
 
+      - name: Patch wine to log a game's fatal-error box
+        run: python3 tools/patch-wine-hard-error.py wine/dlls/ntdll/unix/system.c
+
       # Self-modifying-code fault storms (RockstarService, builds 435-437):
       # the ARM64EC SMC path decides plain and backpatched stores without
       # FEX's backpatch lock, and the PE ntdll's uncapped "[rtcs] pre" line is
