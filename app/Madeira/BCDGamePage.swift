@@ -1199,6 +1199,21 @@ struct BCDGamePending: Equatable {
         }
     }
 
+    /// SOSOalqawe12 fork: Share this game's last log: the file to hand to the share sheet, or nil (the row says why).
+    func lastLogFile() async -> URL? {
+        guard let game, let backend, !busy.contains("sharelog") else { return nil }
+        busy.insert("sharelog")
+        messages["sharelog"] = "Looking for the log…"
+        let log = await backend.lastLog(of: game)
+        busy.remove("sharelog")
+        guard let log else {
+            messages["sharelog"] = "There's no log of this game yet. Play it once, then share it."
+            return nil
+        }
+        messages["sharelog"] = "\(log.name), \(BCDFormat.bytes(Int64(log.bytes)))"
+        return log.file
+    }
+
     /// Back up saves: the zip to hand over, or nil (the row says why).
     func backUpSaves() async -> URL? {
         guard let backend, !busy.contains("saves") else { return nil }
@@ -2160,10 +2175,12 @@ private struct BCDGameOptionsList: View {
         var copyLink: () -> Void
         var backUp: () -> Void
         var restore: () -> Void
+        /// SOSOalqawe12 fork: this game's last log in the share sheet.
+        var shareLog: () -> Void = {}
     }
 
     private var commands: Commands {
-        Commands(show: show, copyLink: copyLink, backUp: backUp, restore: { importFile(.saves) })
+        Commands(show: show, copyLink: copyLink, backUp: backUp, restore: { importFile(.saves) }, shareLog: shareLog)
     }
 
     private func copyLink() {
@@ -2176,6 +2193,14 @@ private struct BCDGameOptionsList: View {
         Task {
             guard let file = await model.backUpSaves() else { return }
             shared = file
+            sharing = BCDGameShare(item: file)
+        }
+    }
+
+    /// SOSOalqawe12 fork: the log itself, not a copy (`shared` stays nil, so closing the sheet keeps it).
+    private func shareLog() {
+        Task {
+            guard let file = await model.lastLogFile() else { return }
             sharing = BCDGameShare(item: file)
         }
     }
@@ -2261,6 +2286,10 @@ private struct BCDGameOptionsList: View {
             rows.append(BCDGameRow(id: "report", title: "Report a problem", symbol: "exclamationmark.bubble",
                                    detail: message("report") ?? "Sends the log of this game's last session.",
                                    enabled: !busy("report"), run: { model?.report() }))
+            // SOSOalqawe12 fork: the same log, through the share sheet (Messages, Discord, Files...).
+            rows.append(BCDGameRow(id: "sharelog", title: "Share this game's last log", symbol: "square.and.arrow.up",
+                                   detail: message("sharelog") ?? "The log of this game's last session, for whoever helps you, or to keep in Files.",
+                                   enabled: !busy("sharelog"), run: { commands?.shareLog() }))
         }
         switch d.removal {
         case .uninstall(let frees):
