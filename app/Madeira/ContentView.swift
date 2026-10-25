@@ -1279,7 +1279,9 @@ struct ContentView: View {
                 return
             }
             LogStore.shared.log("[steam-with] play app=\(appID): a game of your own, started with Steam running")
-            BCDLaunch.applyLibrary(entry, sessionLog: false)
+            // Its own session log: Valve's client does not start this program, so the native side's
+            // Steam-launch log naming never runs for it.
+            BCDLaunch.applyLibrary(entry, sessionLog: true)
             startDock(LocalSteamStart.game(entry, appID: appID), compactPool: MadeiraDockModel.shared.compactPool,
                       profile: entry, local: true)
             return
