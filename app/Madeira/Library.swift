@@ -554,7 +554,9 @@ struct LibraryEntry: Codable, Identifiable {
         // "The game"'s identity and the launch's working folder, for this launch only
         // (the bridge reads and clears them); every other launch starts without them.
         unsetenv("MADEIRA_STEAM_APPID"); unsetenv("MADEIRA_STEAM_APPPATH"); unsetenv("MADEIRA_WORKDIR")
-        if steamAppID != nil {
+        // SOSOalqawe12 fork: a game of your own with Options › Start with Steam starts through Dock too
+        // (LocalSteamStart); its own program here would replace the Dock host (GTA V, 2026-10-25 03:01).
+        if steamAppID != nil || LocalSteamStart.appID(self) != nil {
             // A Steam game through Madeira Dock: Dock has set what starts (ContentView.startDock);
             // the virtual monitor follows this entry's Resolution, as below. "The game" starts
             // its own program below, like any library game.
