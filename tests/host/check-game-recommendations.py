@@ -743,7 +743,8 @@ for name in ('GameRecommendations.swift', 'GameRecommendationsApply.swift'):
     assert project.count(f'/* {name} */') == 3, name              # fileRef, PBXFileReference and the group
 # The rules: first sight only for a game with nothing of its own; switches only on first sight or a reset.
 due = block(apply_src, '    private static func due(', '\n    }\n')
-assert due.index('guard mark != "", let rec = recommendation(') < due.index('let text = GameProfile(windowsPath: windowsPath).text')
+# SOSOalqawe12 fork: the player's own lines (Start with Steam's App ID, Notes) are set aside before the comparison.
+assert due.index('guard mark != "", let rec = recommendation(') < due.index('let text = listPart(GameProfile(windowsPath: windowsPath).text)')
 assert 'guard mark != stamp(rec), mark.hasSuffix("#" + fileHash(text)) else { return nil }' in due
 assert '!(text + (ownLines ?? "")).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty' in due and 'setMark("", windowsPath)' in due
 # The standard list for every game but the Desktop, and later a game's own list over it as on first sight.
@@ -754,7 +755,7 @@ assert 'let fromStandard = mark.hasPrefix(standardID + "#") && rec.id != standar
 assert 'static let standardID = "standard"' in lists_src
 assert 'entry.desktop == true ? nil : recommendation(windowsPath: entry.windowsPath, steamAppID: entry.steamAppID)' in apply_src
 put = block(apply_src, '    private static func put(', '\n    }\n')
-assert 'guard file.text == rec.fileText' in put and 'if kind != .updated {' in put
+assert 'let own = playerLines(file.text)' in put and 'guard file.text == wanted' in put and 'if kind != .updated {' in put
 assert 'LibraryPrefs.setSafeSync(!on, for: windowsPath)' in put and 'LibraryPrefs.setScreen(size, for: windowsPath)' in put
 home_lines = block(apply_src, '    private static func libraryLines(for windowsPath: String) -> String {', '\n    }\n')
 assert 'if entry.steamAppID != nil, key.hasPrefix(path + "\\\\")' in home_lines and 'GameProfile(windowsPath: entry.windowsPath).text' in home_lines

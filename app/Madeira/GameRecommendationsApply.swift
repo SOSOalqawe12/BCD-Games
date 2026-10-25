@@ -137,7 +137,7 @@ extension GameRecommendations {
     /// nil: nothing was written for the game yet.
     static func followsList(windowsPath: String) -> Bool? {
         guard let mark = marks[windowsPath.lowercased()] else { return nil }
-        return !mark.isEmpty && mark.hasSuffix("#" + fileHash(GameProfile(windowsPath: windowsPath).text))
+        return !mark.isEmpty && mark.hasSuffix("#" + fileHash(listPart(GameProfile(windowsPath: windowsPath).text)))
     }
 
     /// The question before a reset.
@@ -153,7 +153,7 @@ extension GameRecommendations {
                             title: String) -> (rec: GameRecommendation, kind: Write)? {
         let mark = marks[windowsPath.lowercased()]
         guard mark != "", let rec = recommendation(windowsPath: windowsPath, steamAppID: steamAppID) else { return nil }
-        let text = GameProfile(windowsPath: windowsPath).text
+        let text = listPart(GameProfile(windowsPath: windowsPath).text)   // the player's own lines aside
         if let mark {
             // Written before: a newer list replaces it while the file is exactly what was written.
             guard mark != stamp(rec), mark.hasSuffix("#" + fileHash(text)) else { return nil }
@@ -177,8 +177,11 @@ extension GameRecommendations {
     @discardableResult
     private static func put(_ rec: GameRecommendation, to windowsPath: String, _ kind: Write, title: String) -> Bool {
         let file = GameProfile(windowsPath: windowsPath)
-        file.text = rec.fileText
-        guard file.text == rec.fileText else {
+        // SOSOalqawe12 fork: the player's own lines (Start with Steam's App ID, Notes) stay below the list.
+        let own = playerLines(file.text)
+        let wanted = own.isEmpty ? rec.fileText : rec.fileText + (rec.fileText.hasSuffix("\n") ? "" : "\n") + own.joined(separator: "\n") + "\n"
+        file.text = wanted
+        guard file.text == wanted else {
             LogStore.shared.log("[recommended] \(title): could not write \(rec.id)", level: .error)
             return false
         }
@@ -195,7 +198,8 @@ extension GameRecommendations {
     }
 
     private static func clear(_ windowsPath: String, title: String) {
-        GameProfile(windowsPath: windowsPath).text = ""
+        let file = GameProfile(windowsPath: windowsPath)
+        file.text = playerLines(file.text).joined(separator: "\n")   // SOSOalqawe12 fork: the player's own lines stay
         setMark(nil, windowsPath)
         LogStore.shared.log("[recommended] \(title): none for this game; its config was emptied (reset)")
     }
@@ -226,6 +230,24 @@ extension GameRecommendations {
     private static func stamp(_ rec: GameRecommendation) -> String { "\(rec.id)#\(rec.version)#\(fileHash(rec.fileText))" }
 
     private static func fileHash(_ text: String) -> String { String(CoverStore.stableHash(text), radix: 16) }
+
+    /// SOSOalqawe12 fork: lines that are the player's, not the list's: Options › Start with Steam's App ID
+    /// (`steam-with`) and Notes (`# Note: `). A write keeps them; whether a game follows its list is
+    /// judged without them.
+    static func isPlayerLine(_ line: String) -> Bool {
+        let t = line.trimmingCharacters(in: .whitespaces)
+        if t.hasPrefix("# Note: ") { return true }
+        guard let eq = t.firstIndex(of: "=") else { return false }
+        return t[..<eq].trimmingCharacters(in: .whitespaces) == "steam-with"
+    }
+    static func playerLines(_ text: String) -> [String] {
+        text.components(separatedBy: "\n").filter(isPlayerLine)
+    }
+    /// The file as the list wrote it: the player's lines taken out.
+    static func listPart(_ text: String) -> String {
+        guard text.components(separatedBy: "\n").contains(where: isPlayerLine) else { return text }
+        return text.components(separatedBy: "\n").filter { !isPlayerLine($0) }.joined(separator: "\n")
+    }
 
     /// Whether a C:\ path exists in drive_c; the name's case does not matter, as on Windows.
     static func driveFileExists(_ windowsPath: String) -> Bool {
