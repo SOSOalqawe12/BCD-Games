@@ -2390,6 +2390,10 @@ jobs:
         run: python3 tests/host/check-fex-ec-ret-direct.py
         if: inputs.checks
 
+      - name: Check fex-exec-views
+        run: python3 tests/host/check-fex-exec-views.py
+        if: inputs.checks
+
       # madeira-bcd: FEX_MADEIRA_HOSTPROBE also reports LSE2, LRCPC3, FRINTTS, RPRES, CSSC, MOPS,
       # ECV and WFXT; FEX's parsers must keep reading every key exactly as published.
       - name: Check FEX host probe
