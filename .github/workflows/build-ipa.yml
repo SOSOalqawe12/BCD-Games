@@ -919,6 +919,13 @@ jobs:
           python3 tests/host/check-wineserver-async-cancel.py
           python3 tools/patch-wineserver-async-cancel.py wine
 
+      # SOSOalqawe12 fork: every cross-thread GetThreadContext in BCD Dock answered ACCESS_DENIED
+      # (Bounty Rush logs, builds 21-22); one "[srv-getctx-err]" line names which check refused it.
+      - name: Patch the wineserver to log why GetThreadContext is refused
+        run: |
+          python3 tests/host/check-wineserver-getctx-log.py
+          python3 tools/patch-wineserver-getctx-log.py wine/server/thread.c
+
       # madeira-bcd: a WM_PAINT that never ends no longer starves WM_TIMER
       # (build/wineserver/queue_ios.c; the Rockstar Games Launcher installer
       # stayed at "Preparing to Install..."; 2026-10-12).
