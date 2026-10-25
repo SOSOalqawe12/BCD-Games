@@ -43,7 +43,8 @@ for name, text in [('MadeiraDock.swift', dock), ('MadeiraDockModel.swift', view)
     # madeira-bcd (round 578): DockCEGService names Valve's own client service program, the one path Valve's installer
     # registers (SteamService.exe under the client's bin folder and Common Files\Steam); it is not a game's program
     # and nothing is decided by it (tests/host/check-dock-ceg-service.py).
-    require(names <= {'dockhost.exe', 'explorer.exe', 'steam.exe', '.exe', 'msiexec.exe', 'steamservice.exe'},
+    # BCD 0.1.579's install-script step names DirectX's own setup programs (dxsetup.exe, dxwebsetup.exe), not a game's.
+    require(names <= {'dockhost.exe', 'explorer.exe', 'steam.exe', '.exe', 'msiexec.exe', 'steamservice.exe', 'dxsetup.exe', 'dxwebsetup.exe'},
             f'{name}: no program-name list ({sorted(names)})')
     for line in text.splitlines():
         if re.search(r'SteamLog\.(event|trace)|LogStore|print\(|NSLog', line):

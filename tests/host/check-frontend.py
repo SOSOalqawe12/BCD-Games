@@ -111,7 +111,7 @@ struct TouchControl: Codable, Equatable { var nx = 0.5 }
 enum ControlAction: Codable, Equatable, Hashable { case none }   // LibraryEntry.controllerBinds
 enum GamepadInput { static let keyboardMouseAvailable = true }   // LibraryEntry's per-game DirectInput choice
 enum LibraryError: LocalizedError { case message(String) }
-enum LocalSteamStart { static func appID(_ entry: LibraryEntry) -> Int? { nil } }   // MadeiraDock.swift: none of these games has Start with Steam
+enum LocalSteamStart { static func appID(_ entry: LibraryEntry) -> Int? { nil } }   // LocalSteamStart.swift: none of these games has Start with Steam
 func env(_ name: String) -> String? { getenv(name).map { String(cString: $0) } }
 '''
 swift += block(lib, 'struct LibraryEntry: Codable, Identifiable') + '\n'

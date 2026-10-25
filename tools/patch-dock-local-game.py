@@ -5,7 +5,7 @@ A Steam copy kept outside Steam's library (on an external drive, say) stops with
 "SteamAPI_Init() failed; unable to locate a running instance of Steam": nothing
 runs Valve's client in its session. BCD's Options > Start with Steam gives such a
 game its Steam App ID; the app then starts BCD Dock as for an installed Steam game
-(LocalSteamStart, app/Madeira/MadeiraDock.swift) and sets
+(LocalSteamStart, app/Madeira/LocalSteamStart.swift) and sets
 MADEIRA_STEAM_HOST_LOCAL_EXE to the game's program (and
 MADEIRA_STEAM_HOST_LOCAL_ARGS to its arguments).
 
