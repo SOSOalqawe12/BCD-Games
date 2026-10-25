@@ -88,6 +88,50 @@ import Foundation
         do { try ExternalDrives.remove(name) } catch { throw BCDGameError(error.localizedDescription) }
     }
 
+    /// SOSOalqawe12 fork: Rockstar's launcher, where Rockstar's installer and Dock's one-time installs put it.
+    static let rockstarLauncher = "Program Files/Rockstar Games/Launcher/Launcher.exe"
+    /// Rockstar's own installer, the one its Social Club page links to; saved in drive_c/bcd-games.
+    static let rockstarInstallerURL = URL(string: "https://gamedownloads.rockstargames.com/public/installer/Rockstar-Games-Launcher.exe")!
+    static let rockstarInstaller = "bcd-games/Rockstar-Games-Launcher.exe"
+
+    func addRockstarLauncher(progress: @escaping (String) -> Void) async throws -> String {
+        let library = LibraryModel.shared
+        if FileManager.default.fileExists(atPath: url(Self.rockstarLauncher).path) {
+            // The installer's entry has done its job.
+            for old in library.entries where old.relativePath.lowercased() == Self.rockstarInstaller.lowercased() { library.remove(old.id) }
+            return try add(Self.rockstarLauncher, title: "Rockstar Games Launcher")
+        }
+        let target = url(Self.rockstarInstaller)
+        if !FileManager.default.fileExists(atPath: target.path) {
+            progress("Downloading Rockstar's installer…")
+            LogStore.shared.log("[rockstar] downloading the launcher's installer from \(Self.rockstarInstallerURL.host ?? "")")
+            let download: (URL, URLResponse)
+            do {
+                download = try await URLSession.shared.download(from: Self.rockstarInstallerURL)
+            } catch {
+                throw BCDGameError("BCD couldn't download Rockstar's installer (\(error.localizedDescription)). Download it from rockstargames.com in Safari, copy it into BCD › wine › drive_c with Files and add it here.")
+            }
+            let (file, response) = download
+            let size = ((try? FileManager.default.attributesOfItem(atPath: file.path))?[.size] as? Int) ?? 0
+            guard (response as? HTTPURLResponse)?.statusCode == 200, size > 1 << 20 else {
+                try? FileManager.default.removeItem(at: file)
+                throw BCDGameError("Rockstar's server didn't send its installer. Download it from rockstargames.com in Safari, copy it into BCD › wine › drive_c with Files and add it here.")
+            }
+            try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try? FileManager.default.removeItem(at: target)
+            try FileManager.default.moveItem(at: file, to: target)
+            LogStore.shared.log("[rockstar] installer saved: \(size) bytes")
+        }
+        let id = try add(Self.rockstarInstaller, title: "Install Rockstar Games Launcher")
+        // Its windows show in a Wine desktop; once it has run, this row adds the launcher.
+        if let index = library.entries.firstIndex(where: { BCDLiveID.local($0.id) == id }), library.entries[index].launchMode == nil {
+            var entry = library.entries[index]
+            entry.launchMode = "desktop"
+            library.save(entry)
+        }
+        return id
+    }
+
     func addEveryGame() async -> Int {
         await withCheckedContinuation { done in
             BCDLibraryImport.run { added in done.resume(returning: added) }

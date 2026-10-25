@@ -1,7 +1,7 @@
 {
   "format": 1,
-  "version": 16,
-  "generated": "2026-10-24",
+  "version": 17,
+  "generated": "2026-10-25",
   "rules": [
     {
       "id": "rdr2-steam",
@@ -1780,6 +1780,37 @@
         "the FEX arena stays where it was\" (L379); with a 454 GB map (4X7N94) \"the RW alias could not be mapped at 0x7900000000 ... hold",
         "released, usual placement\" (L84) and the same two messages (L289, L399). The Launcher never reached the game, so what follows is",
         "unknown. Not tried on a device yet."
+      ]
+    },
+    {
+      "id": "rockstar-launcher",
+      "title": "Rockstar Games Launcher",
+      "version": 1,
+      "match": {
+        "programs": [
+          {"name": "launcher.exe", "beside": "RockstarService.exe"}
+        ]
+      },
+      "config": [
+        "# BCD's recommended settings for the Rockstar Games Launcher on its own (Add a game › Rockstar Games Launcher).",
+        "# Reset to Recommended, at the bottom of the game's settings, brings them back.",
+        "env.MADEIRA_EC_HOOK_TRACE = 0",
+        {"line": "env.MADEIRA_FEX_AVX = 0", "minBuild": 576},
+        {"line": "env.MADEIRA_SC_PA_POOLS = 2", "minBuild": 576},
+        {"line": "env.MADEIRA_SPAWN_BLOCK = RockstarErrorHandler", "minBuild": 576},
+        {"line": "env.MADEIRA_X64_IMAGE_NOCOPY = 1", "minBuild": 576}
+      ],
+      "notes": [
+        "SOSOalqawe12 fork, 2026-10-25: Rockstar's Launcher.exe started as its own library entry (beside RockstarService.exe,",
+        "so another program called Launcher.exe gets nothing). The entry starts Windows services and runs in a Wine desktop by",
+        "default (LibraryEntry.isRockstarProgram), which answers the \"Unable to open SC manager! (1722)\" of GTA IV's and San",
+        "Andreas DE's logs (4GAWSA, MM0DAY) without Dock's DOCK_GAME_SCM. The lines are the Launcher's own, each from those lists",
+        "and GTA V's: FEX_AVX = 0 (AVX in the Launcher's process only and the Launcher cannot connect to RockstarService: GBY65K,",
+        "Y5MEB6, A50T0Q against 8JXT6Q, DGNRT5); SC_PA_POOLS = 2 (the Social Club browser's PartitionAlloc pools: J1J40D, 3JTHRV);",
+        "SPAWN_BLOCK = RockstarErrorHandler (the crash handler's copies and code buffer shrank the pool: 4GAWSA, MM0DAY);",
+        "X64_IMAGE_NOCOPY (the 240 MB libcef.dll and the Launcher's x64 files without a pool copy: MM0DAY). A game started",
+        "from the Launcher runs in this session with these lines, not with its own list: a game added as its own entry",
+        "(PlayGTAV.exe and the rest) gets its own list and starts the Launcher itself. Not tried on a device yet."
       ]
     },
     {

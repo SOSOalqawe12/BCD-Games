@@ -158,7 +158,7 @@ for what, needle in [
     ("... written to the entry's binds table", "entry.controllerBinds = table.isEmpty ? nil : table"),
     ("... the right stick's up and down speed", "$0.padMouseVertical = abs(speed - 1) < 0.01 ? nil : min(max(speed, 0.25), 1.5)"),
     ("... and every bind put back", "entry.controllerBinds = nil\n                entry.padMouseVertical = nil"),
-    ("launch: on its own or in a Wine desktop, working folder, services", '$0.launchMode = value == "desktop" ? "desktop" : nil'),
+    ("launch: on its own or in a Wine desktop, working folder, services", '$0.launchMode = value == "desktop" ? "desktop" : (LibraryEntry.isRockstarProgram($0.launchWindowsPath) ? "direct" : nil)'),
     ("launch arguments and their flags (BCD's own rules)", "entry.arguments = BCDLaunchFlags.toggled(entry.arguments, word)"),
     ("what starts", "entry.commandPreview"),
     ("Steam: start with BCD Dock or the game's own program", '$0.steamStart = mode'),

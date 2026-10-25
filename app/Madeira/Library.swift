@@ -305,7 +305,9 @@ struct LibraryEntry: Codable, Identifiable {
     /// Dock has Dock's own desktop and command (ContentView.startDock).
     var usesLaunchOptions: Bool { desktop != true && (steamAppID == nil || startsSteamGameDirectly) }
     /// ml1163: a game (not the Desktop entry) started inside the Wine desktop.
-    var runsInDesktop: Bool { usesLaunchOptions && launchMode == "desktop" }
+    /// SOSOalqawe12 fork: a Rockstar program (isRockstarProgram) starts in the desktop unless its entry chose
+    /// otherwise: it starts through the services batch, and on its own Wine stopped when the batch ended.
+    var runsInDesktop: Bool { usesLaunchOptions && (launchMode ?? (Self.isRockstarProgram(launchWindowsPath) ? "desktop" : nil)) == "desktop" }
     /// The program's own arguments: Steam's launch configuration for "The game",
     /// else the entry's Launch arguments.
     var programArguments: String { startsSteamGameDirectly ? (steamProgramArguments ?? "") : arguments }
@@ -341,12 +343,23 @@ struct LibraryEntry: Codable, Identifiable {
     }
     /// ml1163: where startServices writes its batch file, one per entry.
     var servicesScriptPath: String { "C:\\bcd-games\\\(id.uuidString).bat" }
+    /// SOSOalqawe12 fork: Rockstar's launcher (Launcher.exe in a "Rockstar Games\Launcher" folder) and the stubs
+    /// that start it (PlayGTAV.exe and the rest). The launcher drives its own Windows service, RockstarService.exe,
+    /// and without a service manager every start ended at "Unable to open SC manager! (1722)"; so these programs
+    /// get startServices unless their entry turned it off.
+    static func isRockstarProgram(_ windowsPath: String) -> Bool {
+        let path = windowsPath.lowercased().replacingOccurrences(of: "/", with: "\\")
+        let name = path.split(separator: "\\").last.map(String.init) ?? path
+        if name == "launcher.exe" { return path.hasSuffix("\\rockstar games\\launcher\\launcher.exe") }
+        return ["playgtav.exe", "playrdr2.exe", "playgtaiv.exe", "playgtasanandreas.exe", "playgtaiii.exe",
+                "playgtavc.exe", "playmaxpayne3.exe", "playlanoire.exe", "playbully.exe"].contains(name)
+    }
     /// ml1163: the services batch, CRLF. services.exe is STARTed; then a .bat is
     /// CALLed so it runs in this console, and an exe is STARTed so cmd exits and
     /// its console closes straight away (the pattern of Steam's batch). nil
     /// unless startServices.
     var servicesScript: String? {
-        guard usesLaunchOptions, startServices == true else { return nil }
+        guard usesLaunchOptions, startServices ?? Self.isRockstarProgram(launchWindowsPath) else { return nil }
         func quoted(_ s: String) -> String { "\"\(s)\"" }
         // Text put into the batch keeps one line each (a line break in the arguments
         // or the title would start another command), and its '%' is doubled once per

@@ -62,11 +62,17 @@ struct BCDProgramInfo: Equatable {
     func addExternal(_ url: URL) throws -> String
     /// SOSOalqawe12 fork: forgets an external drive by its name under External; nothing on it is deleted.
     func removeExternal(_ name: String) throws
+    /// SOSOalqawe12 fork: the Rockstar Games Launcher as a library game when it is installed, else Rockstar's
+    /// installer, downloaded from Rockstar, as a game to run once; the answer is the game's id in the store.
+    func addRockstarLauncher(progress: @escaping (String) -> Void) async throws -> String
 }
 
 extension BCDAddGameBackend {
     func addExternal(_ url: URL) throws -> String { throw BCDGameError("External drives aren't available here.") }
     func removeExternal(_ name: String) throws { throw BCDGameError("External drives aren't available here.") }
+    func addRockstarLauncher(progress: @escaping (String) -> Void) async throws -> String {
+        throw BCDGameError("The Rockstar Games Launcher isn't available here.")
+    }
 }
 
 /// Where the screen finds its backend: the app's (BCDAddGameLive, found by its Objective-C name,
@@ -113,6 +119,8 @@ struct BCDAddGame: View {
     @State private var name = ""
     @State private var everyGame: String?
     @State private var busy = false
+    /// SOSOalqawe12 fork: the Rockstar row's progress while it downloads the installer.
+    @State private var rockstar: String?
     /// SOSOalqawe12 fork: Files is open to pick a folder on an external drive.
     @State private var pickingExternal = false
     /// Added: waiting for the store to list it.
@@ -232,6 +240,9 @@ struct BCDAddGame: View {
             row(id: "add.external", symbol: "externaldrive", title: "Play from an external drive",
                 detail: "Pick the drive, or the folder its games are in, in Files. It shows here as External, and its games run from the drive without being copied. Keep the drive connected while you play.",
                 run: { pickingExternal = true })
+            row(id: "add.rockstar", symbol: "r.square", title: rockstar ?? "Rockstar Games Launcher",
+                detail: "Adds Rockstar's launcher as a game: sign in, download your Rockstar games and press Play in it. Not installed yet? BCD downloads Rockstar's installer from Rockstar and adds it, to run once. Games bought on Steam still start with Steam.",
+                enabled: !busy, run: addRockstarLauncher)
             BCDEyebrow(text: "drive_c").padding(.top, 10).padding(.leading, 4)
         }
         if let drive = BCDDrivePath.externalDrive(folder) {   // SOSOalqawe12 fork: a drive can be forgotten again
@@ -408,6 +419,26 @@ struct BCDAddGame: View {
         guard waiting == id else { return }
         waiting = nil
         added(id)
+    }
+
+    /// SOSOalqawe12 fork: the launcher, or its installer, added; its page opens as after Add to library.
+    private func addRockstarLauncher() {
+        guard let backend, !busy, waiting == nil else { return }
+        busy = true
+        problem = nil
+        Task {
+            do {
+                let id = try await backend.addRockstarLauncher { text in Task { @MainActor in rockstar = text } }
+                busy = false
+                rockstar = nil
+                waiting = id
+                if store.games.contains(where: { $0.id == id }) { finish(id) }
+            } catch {
+                busy = false
+                rockstar = nil
+                problem = error.localizedDescription
+            }
+        }
     }
 
     private func addEveryGame() {

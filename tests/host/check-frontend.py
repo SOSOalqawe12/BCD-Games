@@ -259,6 +259,14 @@ expect((try? bad.validate()) == nil, "invalid frame limit refused")
 game.configureLaunch()
 expect(env("MADEIRA_WORKDIR") == nil, "a game started directly in its own folder: the bridge's default, nothing exported")
 expect(game.launchMode == nil && game.servicesScript == nil, "new entries: no ml1163 options")
+// SOSOalqawe12 fork: Rockstar's launcher and its stubs start Windows services in a Wine desktop by default.
+var rgl = LibraryEntry(title: "Rockstar Games Launcher", relativePath: "Program Files/Rockstar Games/Launcher/Launcher.exe", bits: 64)
+expect(rgl.runsInDesktop && rgl.servicesScript?.contains("start \"\" \"C:\\Program Files\\Rockstar Games\\Launcher\\Launcher.exe\"") == true,
+       "Rockstar Launcher: services batch in a Wine desktop without any setting")
+rgl.startServices = false; rgl.launchMode = "direct"
+expect(!rgl.runsInDesktop && rgl.servicesScript == nil, "Rockstar Launcher: both can be turned off")
+expect(LibraryEntry.isRockstarProgram("C:\\Games\\GTA V\\PlayGTAV.exe") && !LibraryEntry.isRockstarProgram("C:\\Games\\Other\\Launcher.exe"),
+       "Rockstar programs: the stubs anywhere, Launcher.exe only in Rockstar Games\\Launcher")
 var inDesk = game; inDesk.launchMode = "desktop"; inDesk.arguments = "-windowed"
 inDesk.configureLaunch()
 expect(env("MADEIRA_EXE") == "explorer.exe" && env("MADEIRA_DESKTOP") == "1"
@@ -581,7 +589,7 @@ check('displayMode = entry.displayMode' in begin and 'controls.sizeScale =' in b
 check('GuestDisplay.configureSessionDefault(' in block(lib, 'func configureLaunch('),
       'every launch sets the virtual monitor from the Resolution')
 # ml1163: a game's launch options in its page.
-check('id: "start"' in page and 'case "start": change(game) { $0.launchMode = value == "desktop" ? "desktop" : nil }' in page
+check('id: "start"' in page and 'case "start": change(game) { $0.launchMode = value == "desktop" ? "desktop" : (LibraryEntry.isRockstarProgram($0.launchWindowsPath) ? "direct" : nil) }' in page
       and 'entry.workingDirectory = ' in page.replace('$0.workingDirectory = ', 'entry.workingDirectory = ') and 'Self.toggle("services", "Start Windows services first"' in page,
       'game page: start mode, working folder and services')
 check('settings.append(BCDGameSetting(id: "command", title: "What starts", kind: .info, value: entry.commandPreview))' in page,

@@ -770,7 +770,7 @@ import UniformTypeIdentifiers
                 BCDGameSetting(id: "workdir", title: "Start in folder", kind: .text(prompt: "C:\\Games\\Some Game"),
                                value: entry.workingDirectory ?? "",
                                note: "The folder the game starts in, as a C:\\ path. Empty: its program's own folder."),
-                Self.toggle("services", "Start Windows services first", entry.startServices == true,
+                Self.toggle("services", "Start Windows services first", entry.startServices ?? LibraryEntry.isRockstarProgram(entry.launchWindowsPath),
                             note: "Starts Windows' services before the game, for launchers that need them (Steam-style COM). BCD writes a small batch file for it."),
             ]
         }
@@ -791,7 +791,7 @@ import UniformTypeIdentifiers
         }
         guard !settings.isEmpty else { return nil }
         settings.append(BCDGameSetting(id: "command", title: "What starts", kind: .info, value: entry.commandPreview))
-        let warning = entry.usesLaunchOptions && !entry.runsInDesktop && (entry.isBatch || entry.startServices == true)
+        let warning = entry.usesLaunchOptions && !entry.runsInDesktop && (entry.isBatch || entry.servicesScript != nil)
         return BCDGameSettingGroup(id: "launch", title: "Launch", symbol: "play.rectangle", settings: settings,
                                    note: warning ? "Started on its own, Wine stops as soon as its first program ends: a batch file that starts the game and exits ends the game too. Choose In a Wine desktop." : nil,
                                    headline: entry.runsInDesktop ? "In a Wine desktop" : (entry.arguments.isEmpty ? "On its own" : "On its own · " + entry.arguments))
@@ -1183,11 +1183,11 @@ import UniformTypeIdentifiers
                 table[input] = action
                 entry.controllerBinds = table.isEmpty ? nil : table
             }
-        case "start": change(game) { $0.launchMode = value == "desktop" ? "desktop" : nil }
+        case "start": change(game) { $0.launchMode = value == "desktop" ? "desktop" : (LibraryEntry.isRockstarProgram($0.launchWindowsPath) ? "direct" : nil) }
         case "workdir":
             let folder = value.trimmingCharacters(in: .whitespaces)
             change(game) { $0.workingDirectory = folder.isEmpty ? nil : folder }
-        case "services": change(game) { $0.startServices = on ? true : nil }
+        case "services": change(game) { $0.startServices = on == LibraryEntry.isRockstarProgram($0.launchWindowsPath) ? nil : on }
         case "arguments": change(game) { $0.arguments = value }
         case let flag where flag.hasPrefix("flag-"):
             let word = String(flag.dropFirst(4))
