@@ -112,11 +112,11 @@ require('if let profile { library.begin(profile, dock: game) }' in dock_start an
         "a Steam game's session takes its display, overlay and control settings")
 configure = library[library.index('    func configureLaunch() {'):]
 configure = configure[:configure.index('\n    }\n')]
-require(configure.index('if steamAppID != nil {') < configure.index('if !startsSteamGameDirectly {') <
+require(configure.index('if steamAppID != nil || LocalSteamStart.appID(self) != nil {') < configure.index('if !startsSteamGameDirectly {') <
         configure.index('return') < configure.index('setenv("MADEIRA_EXE"'),
         "a Steam game's profile never replaces what Madeira Dock starts (only \"The game\" sets what starts)")
 require(configure.index('unsetenv("MADEIRA_STEAM_APPID"); unsetenv("MADEIRA_STEAM_APPPATH"); unsetenv("MADEIRA_WORKDIR")') <
-        configure.index('if steamAppID != nil {') and
+        configure.index('if steamAppID != nil || LocalSteamStart.appID(self) != nil {') and
         configure.index('if startsSteamGameDirectly, let steamAppID {') < configure.index(' setenv("MADEIRA_STEAM_APPID"') and
         configure.count(' setenv("MADEIRA_STEAM_APPID"') == 1,
         "the game's own Steam identity and working folder are exported for \"The game\" only, and cleared for every other launch")

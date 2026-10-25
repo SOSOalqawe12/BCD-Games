@@ -109,7 +109,7 @@ require('#include "Winios.h"' in winios, 'Winios.m includes the header Swift rea
 
 # A second Play while a Dock start is on its way (Panzer Paladin 9BAP3Q: two taps 1.4 s apart; the second start's
 # fail() cleaned up the first one's transfer and gave the account back while the host signed in: Dock code 30).
-start = content[content.index('    private func startDock(_ game: DockGame, compactPool: Bool, profile: LibraryEntry? = nil) {'):]
+start = content[content.index('    private func startDock(_ game: DockGame, compactPool: Bool, profile: LibraryEntry? = nil, local: Bool = false) {'):]
 start = start[:start.index('\n    private func startWineserver() {')]
 fail_fn = start[start.index('        func fail(_ error: Error) {'):]
 fail_fn = fail_fn[:fail_fn.index('\n        }\n')]

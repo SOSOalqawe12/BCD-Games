@@ -200,7 +200,7 @@ require('if let profile { library.begin(profile, dock: game) }' in start and sta
         and 'runWineFullSequence(profile: profile)' in start,
         "Dock's launch path takes a Steam game's own profile, and only that")
 configure = block(library, 'func configureLaunch()')
-require(configure.index('if steamAppID != nil {') < configure.index('setenv("MADEIRA_EXE"'),
+require(configure.index('if steamAppID != nil || LocalSteamStart.appID(self) != nil {') < configure.index('setenv("MADEIRA_EXE"'),
         "a Steam game's profile leaves Dock's program, arguments and desktop in place")
 begin = block(library, 'func begin(_ entry: LibraryEntry, remember: Bool = true, dock: DockGame? = nil)')
 require('if remember { var played = entry; played.lastPlayed = Date(); save(played) }' in begin,
